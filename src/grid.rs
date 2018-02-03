@@ -1,3 +1,5 @@
+use grid_2d::Coord;
+
 pub trait SolidGrid {
-    fn is_solid(&self, coord: (i32, i32)) -> bool;
+    fn is_solid(&self, coord: Coord) -> bool;
 }

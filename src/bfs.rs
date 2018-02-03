@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use direction::Direction;
 use grid::SolidGrid;
+use grid_2d::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
@@ -12,46 +13,17 @@ pub enum Error {
 #[derive(Debug, Clone, Copy)]
 struct BfsNode {
     seen: u64,
-    coord: (i32, i32),
+    coord: Coord,
     from_parent: Option<Direction>,
 }
 
-#[derive(Debug, Clone)]
-struct BfsNodeGrid {
-    width: u32,
-    height: u32,
-    nodes: Vec<BfsNode>,
-}
-
-impl BfsNodeGrid {
-    fn new(width: u32, height: u32) -> Self {
-        let size = (width * height) as usize;
-        let mut nodes = Vec::with_capacity(size);
-
-        for y in 0..height {
-            for x in 0..width {
-                let node = BfsNode {
-                    seen: 0,
-                    coord: (x as i32, y as i32),
-                    from_parent: None,
-                };
-                nodes.push(node);
-            }
-        }
-
+impl From<Coord> for BfsNode {
+    fn from(coord: Coord) -> Self {
         Self {
-            width,
-            height,
-            nodes,
+            seen: 0,
+            coord,
+            from_parent: None,
         }
-    }
-
-    fn coord_to_index(&self, (x, y): (i32, i32)) -> Option<usize> {
-        if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
-            return None;
-        }
-
-        Some((self.width * y as u32 + x as u32) as usize)
     }
 }
 
@@ -59,27 +31,26 @@ impl BfsNodeGrid {
 pub struct BfsContext {
     seq: u64,
     queue: VecDeque<usize>,
-    node_grid: BfsNodeGrid,
+    node_grid: Grid<BfsNode>,
 }
 
 impl BfsContext {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             seq: 0,
-            node_grid: BfsNodeGrid::new(width, height),
+            node_grid: Grid::new_from_coord(width, height),
             queue: VecDeque::new(),
         }
     }
 
-    fn make_path(path: &mut Vec<Direction>, node_grid: &BfsNodeGrid, goal_index: usize) {
+    fn make_path(path: &mut Vec<Direction>, node_grid: &Grid<BfsNode>, goal_index: usize) {
         path.clear();
         let mut index = goal_index;
-        while let Some(from_parent) = node_grid.nodes[index].from_parent {
+        while let Some(from_parent) = node_grid[index].from_parent {
             path.push(from_parent);
             let to_parent = from_parent.opposite();
-            let (dx, dy) = to_parent.into();
-            let (current_x, current_y) = node_grid.nodes[index].coord;
-            index = node_grid.coord_to_index((current_x + dx, current_y + dy))
+            let offset: Coord = to_parent.into();
+            index = node_grid.coord_to_index(node_grid[index].coord + offset)
                 .expect("Invalid search state");
         }
         path.reverse();
@@ -87,8 +58,8 @@ impl BfsContext {
 
     pub fn search<G, V, D>(&mut self,
                            grid: &G,
-                           start: (i32, i32),
-                           goal: (i32, i32),
+                           start: Coord,
+                           goal: Coord,
                            directions: D,
                            path: &mut Vec<Direction>) -> Result<(), Error>
         where G: SolidGrid,
@@ -110,7 +81,7 @@ impl BfsContext {
             self.seq += 1;
             self.queue.clear();
 
-            let node = &mut self.node_grid.nodes[index];
+            let node = &mut self.node_grid[index];
             node.from_parent = None;
             node.seen = self.seq;
             self.queue.push_back(index);
@@ -119,11 +90,11 @@ impl BfsContext {
         };
 
         while let Some(current_index) = self.queue.pop_front() {
-            let (current_x, current_y) = self.node_grid.nodes[current_index].coord;
+            let current_coord = self.node_grid[current_index].coord;
             for v in directions {
                 let direction = v.into();
-                let (dx, dy) = direction.into();
-                let neighbour_coord = (current_x + dx, current_y + dy);
+                let offset: Coord = direction.into();
+                let neighbour_coord = current_coord + offset;
 
                 if grid.is_solid(neighbour_coord) {
                     continue;
@@ -131,7 +102,7 @@ impl BfsContext {
 
                 if let Some(index) = self.node_grid.coord_to_index(neighbour_coord) {
                     {
-                        let node = &mut self.node_grid.nodes[index];
+                        let node = &mut self.node_grid[index];
                         if node.seen != self.seq {
                             node.seen = self.seq;
                             node.from_parent = Some(direction);
@@ -155,88 +126,48 @@ impl BfsContext {
 mod tests {
 
     use direction::*;
+    use grid_2d::*;
     use grid::SolidGrid;
     use path::PathWalk;
     use super::*;
 
-    struct BoolGrid {
-        width: u32,
-        height: u32,
-        cells: Vec<bool>,
-    }
 
-    impl BoolGrid {
-        fn new(width: u32, height: u32) -> Self {
-            let size = (width * height) as usize;
-            let mut cells = Vec::with_capacity(size);
-            cells.resize(size, false);
-            Self {
-                width,
-                height,
-                cells,
-            }
-        }
-
-        fn get_index(&self, (x, y): (i32, i32)) -> Option<usize> {
-            if x < 0 || y < 0 || x >= self.width as i32 || y >= self.height as i32 {
-                return None;
-            }
-            Some((self.width * y as u32 + x as u32) as usize)
-        }
-
-        fn get_mut(&mut self, coord: (i32, i32)) -> Option<&mut bool> {
-            if let Some(index) = self.get_index(coord) {
-                Some(&mut self.cells[index])
-            } else {
-                None
-            }
-        }
-
-        fn get(&self, coord: (i32, i32)) -> Option<&bool> {
-            if let Some(index) = self.get_index(coord) {
-                Some(&self.cells[index])
-            } else {
-                None
-            }
-        }
-
-        fn from_strings(strings: &Vec<&str>) -> (Self, (i32, i32), (i32, i32)) {
-            let width = strings[0].len() as u32;
-            let height = strings.len() as u32;
-            let mut grid = Self::new(width, height);
-            let mut start = None;
-            let mut goal = None;
-            for (i, line) in strings.into_iter().enumerate() {
-                for (j, ch) in line.chars().enumerate() {
-                    let coord = (j as i32, i as i32);
-                    match ch {
-                        '.' => (),
-                        '#' => *grid.get_mut(coord).unwrap() = true,
-                        's' => start = Some(coord),
-                        'g' => goal = Some(coord),
-                        'B' => {
-                            goal = Some(coord);
-                            start = Some(coord);
-                        }
-                        'G' => {
-                            goal = Some(coord);
-                            *grid.get_mut(coord).unwrap() = true;
-                        }
-                        'S' => {
-                            start = Some(coord);
-                            *grid.get_mut(coord).unwrap() = true;
-                        }
-                        _ => panic!(),
+    fn grid_from_strings(strings: &Vec<&str>) -> (Grid<bool>, Coord, Coord) {
+        let width = strings[0].len() as u32;
+        let height = strings.len() as u32;
+        let mut grid = Grid::new_copy(width, height, false);
+        let mut start = None;
+        let mut goal = None;
+        for (i, line) in strings.into_iter().enumerate() {
+            for (j, ch) in line.chars().enumerate() {
+                let coord = Coord::new(j as i32, i as i32);
+                match ch {
+                    '.' => (),
+                    '#' => *grid.get_mut(coord).unwrap() = true,
+                    's' => start = Some(coord),
+                    'g' => goal = Some(coord),
+                    'B' => {
+                        goal = Some(coord);
+                        start = Some(coord);
                     }
+                    'G' => {
+                        goal = Some(coord);
+                        *grid.get_mut(coord).unwrap() = true;
+                    }
+                    'S' => {
+                        start = Some(coord);
+                        *grid.get_mut(coord).unwrap() = true;
+                    }
+                    _ => panic!(),
                 }
             }
-
-            (grid, start.unwrap(), goal.unwrap())
         }
+
+        (grid, start.unwrap(), goal.unwrap())
     }
 
-    impl SolidGrid for BoolGrid {
-        fn is_solid(&self, coord: (i32, i32)) -> bool {
+    impl SolidGrid for Grid<bool> {
+        fn is_solid(&self, coord: Coord) -> bool {
             self.get(coord).cloned().unwrap_or(true)
         }
     }
@@ -245,8 +176,8 @@ mod tests {
         where V: Into<Direction>,
               D: Copy + IntoIterator<Item=V>,
     {
-        let (grid, start, goal) = BoolGrid::from_strings(strings);
-        let mut ctx = BfsContext::new(grid.width, grid.height);
+        let (grid, start, goal) = grid_from_strings(strings);
+        let mut ctx = BfsContext::new(grid.width(), grid.height());
         let mut path = Vec::new();
         ctx.search(&grid, start, goal, directions, &mut path).unwrap();
 
@@ -294,8 +225,8 @@ mod tests {
             "..........",
         ];
 
-        let (grid, start, goal) = BoolGrid::from_strings(&strings);
-        let mut ctx = BfsContext::new(grid.width, grid.height);
+        let (grid, start, goal) = grid_from_strings(&strings);
+        let mut ctx = BfsContext::new(grid.width(), grid.height());
         let mut path = Vec::new();
         let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
@@ -329,8 +260,8 @@ mod tests {
             "..........",
         ];
 
-        let (grid, start, goal) = BoolGrid::from_strings(&strings);
-        let mut ctx = BfsContext::new(grid.width, grid.height);
+        let (grid, start, goal) = grid_from_strings(&strings);
+        let mut ctx = BfsContext::new(grid.width(), grid.height());
         let mut path = Vec::new();
         let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
@@ -353,8 +284,8 @@ mod tests {
             "..........",
         ];
 
-        let (grid, start, goal) = BoolGrid::from_strings(&strings);
-        let mut ctx = BfsContext::new(grid.width, grid.height);
+        let (grid, start, goal) = grid_from_strings(&strings);
+        let mut ctx = BfsContext::new(grid.width(), grid.height());
         let mut path = Vec::new();
         let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
@@ -376,11 +307,11 @@ mod tests {
             "..........",
         ];
 
-        let (grid, _, goal) = BoolGrid::from_strings(&strings);
+        let (grid, _, goal) = grid_from_strings(&strings);
 
-        let start = (-1, -1);
+        let start = Coord::new(-1, -1);
 
-        let mut ctx = BfsContext::new(grid.width, grid.height);
+        let mut ctx = BfsContext::new(grid.width(), grid.height());
         let mut path = Vec::new();
         let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
