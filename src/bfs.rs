@@ -2,20 +2,14 @@ use std::collections::VecDeque;
 use direction::Direction;
 use grid::SolidGrid;
 use grid_2d::*;
+use error::*;
 use path::{self, PathNode};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Error {
-    StartOutsideGrid,
-    StartSolid,
-    NoPath,
-}
-
 #[derive(Debug, Clone, Copy)]
-struct BfsNode {
-    seen: u64,
-    coord: Coord,
-    from_parent: Option<Direction>,
+pub struct BfsNode {
+    pub seen: u64,
+    pub coord: Coord,
+    pub from_parent: Option<Direction>,
 }
 
 impl PathNode for BfsNode {
@@ -89,11 +83,11 @@ impl BfsContext {
                 let offset: Coord = direction.into();
                 let neighbour_coord = current_coord + offset;
 
-                if grid.is_solid(neighbour_coord) {
-                    continue;
-                }
-
                 if let Some(index) = self.node_grid.coord_to_index(neighbour_coord) {
+                    if grid.is_solid(neighbour_coord) {
+                        continue;
+                    }
+
                     {
                         let node = &mut self.node_grid[index];
                         if node.seen != self.seq {

@@ -2,7 +2,8 @@ use direction::*;
 use grid_2d::*;
 use grid::SolidGrid;
 use path::PathWalk;
-use bfs;
+use bfs::*;
+use error::*;
 
 fn grid_from_strings(strings: &Vec<&str>) -> (Grid<bool>, Coord, Coord) {
     let width = strings[0].len() as u32;
@@ -40,7 +41,7 @@ fn grid_from_strings(strings: &Vec<&str>) -> (Grid<bool>, Coord, Coord) {
 
 impl SolidGrid for Grid<bool> {
     fn is_solid(&self, coord: Coord) -> bool {
-        self.get(coord).cloned().unwrap_or(true)
+        self.get(coord).cloned().unwrap()
     }
 }
 
@@ -49,7 +50,7 @@ fn common_test<V, D>(strings: &Vec<&str>, directions: D, length: usize)
           D: Copy + IntoIterator<Item=V>,
 {
     let (grid, start, goal) = grid_from_strings(strings);
-    let mut ctx = bfs::BfsContext::new(grid.width(), grid.height());
+    let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     ctx.search(&grid, start, goal, directions, &mut path).unwrap();
 
@@ -57,9 +58,9 @@ fn common_test<V, D>(strings: &Vec<&str>, directions: D, length: usize)
 
     let walk = PathWalk::new(start, &path);
 
-    let should_be_goal = walk.inspect(|&coord| {
+    let (should_be_goal, _) = walk.inspect(|&(coord, _)| {
         assert!(!grid.is_solid(coord));
-    }).last().unwrap_or(start);
+    }).last().unwrap_or((start, Direction::North));
 
     assert_eq!(should_be_goal, goal);
 }
@@ -98,11 +99,11 @@ fn no_path() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings);
-    let mut ctx = bfs::BfsContext::new(grid.width(), grid.height());
+    let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
-    assert_eq!(result, Err(bfs::Error::NoPath));
+    assert_eq!(result, Err(Error::NoPath));
 }
 
 #[test]
@@ -133,11 +134,11 @@ fn goal_is_solid() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings);
-    let mut ctx = bfs::BfsContext::new(grid.width(), grid.height());
+    let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
-    assert_eq!(result, Err(bfs::Error::NoPath));
+    assert_eq!(result, Err(Error::NoPath));
 }
 
 
@@ -157,11 +158,11 @@ fn start_is_solid() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings);
-    let mut ctx = bfs::BfsContext::new(grid.width(), grid.height());
+    let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
-    assert_eq!(result, Err(bfs::Error::StartSolid));
+    assert_eq!(result, Err(Error::StartSolid));
 }
 
 #[test]
@@ -183,9 +184,9 @@ fn start_outside_grid() {
 
     let start = Coord::new(-1, -1);
 
-    let mut ctx = bfs::BfsContext::new(grid.width(), grid.height());
+    let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
-    assert_eq!(result, Err(bfs::Error::StartOutsideGrid));
+    assert_eq!(result, Err(Error::StartOutsideGrid));
 }
