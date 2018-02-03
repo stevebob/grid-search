@@ -4,4 +4,4 @@ version = "0.1.0"
 authors = ["Stephen Sherratt <sfsherratt@gmail.com>"]
 
 [dependencies]
-direction = { path = "/home/steve/src/direction" }
+direction = "0.3.0"
