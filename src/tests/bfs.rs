@@ -2,7 +2,7 @@ use direction::*;
 use grid_2d::*;
 use grid::SolidGrid;
 use path::PathWalk;
-use super::*;
+use bfs;
 
 fn grid_from_strings(strings: &Vec<&str>) -> (Grid<bool>, Coord, Coord) {
     let width = strings[0].len() as u32;
