@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 use direction::Direction;
 use grid::SolidGrid;
 use grid_2d::*;
+use path::{self, PathNode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
@@ -15,6 +16,11 @@ struct BfsNode {
     seen: u64,
     coord: Coord,
     from_parent: Option<Direction>,
+}
+
+impl PathNode for BfsNode {
+    fn from_parent(&self) -> Option<Direction> { self.from_parent }
+    fn coord(&self) -> Coord { self.coord }
 }
 
 impl From<Coord> for BfsNode {
@@ -41,19 +47,6 @@ impl BfsContext {
             node_grid: Grid::new_from_coord(width, height),
             queue: VecDeque::new(),
         }
-    }
-
-    fn make_path(path: &mut Vec<Direction>, node_grid: &Grid<BfsNode>, goal_index: usize) {
-        path.clear();
-        let mut index = goal_index;
-        while let Some(from_parent) = node_grid[index].from_parent {
-            path.push(from_parent);
-            let to_parent = from_parent.opposite();
-            let offset: Coord = to_parent.into();
-            index = node_grid.coord_to_index(node_grid[index].coord + offset)
-                .expect("Invalid search state");
-        }
-        path.reverse();
     }
 
     pub fn search<G, V, D>(&mut self,
@@ -111,7 +104,7 @@ impl BfsContext {
                     }
 
                     if neighbour_coord == goal {
-                        Self::make_path(path, &self.node_grid, index);
+                        path::make_path(&self.node_grid, index, path);
                         return Ok(());
                     }
                 }
