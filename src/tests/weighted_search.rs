@@ -89,7 +89,7 @@ fn common_test(
     let (grid, start, goal) = grid_from_strings(strings, ordinal_multiplier);
     let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
 
-    let check_result = |path: &Vec<_>, metadata: SearchMetadata, using_heuristic| {
+    let check_result = |path: &Vec<_>, metadata: SearchMetadata| {
 
         assert_eq!(path.len(), length);
 
@@ -116,12 +116,12 @@ fn common_test(
 
         let metadata = ctx.search(&grid, start, goal, DirectionsCardinal, &mut path)
             .unwrap();
-        let without_heuristic = check_result(&path, metadata, false);
+        let without_heuristic = check_result(&path, metadata);
 
         let metadata =
             ctx.search_cardinal_manhatten_distance_heuristic(&grid, start, goal, &mut path)
                 .unwrap();
-        let with_heuristic = check_result(&path, metadata, true);
+        let with_heuristic = check_result(&path, metadata);
 
         (with_heuristic, without_heuristic)
 
@@ -129,14 +129,14 @@ fn common_test(
 
         let metadata = ctx.search(&grid, start, goal, Directions, &mut path)
             .unwrap();
-        let without_heuristic = check_result(&path, metadata, false);
+        let without_heuristic = check_result(&path, metadata);
 
         let weights = HeuristicDirectionWeights::new(1, ordinal_multiplier);
 
         let metadata =
             ctx.search_diagonal_distance_heuristic(&grid, start, goal, weights, &mut path)
                 .unwrap();
-        let with_heuristic = check_result(&path, metadata, true);
+        let with_heuristic = check_result(&path, metadata);
 
         (with_heuristic, without_heuristic)
     };
