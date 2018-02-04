@@ -3,13 +3,14 @@ use direction::Direction;
 use grid::SolidGrid;
 use grid_2d::*;
 use error::*;
+use metadata::*;
 use path::{self, PathNode};
 
 #[derive(Debug, Clone, Copy)]
 pub struct BfsNode {
-    pub seen: u64,
-    pub coord: Coord,
-    pub from_parent: Option<Direction>,
+    seen: u64,
+    coord: Coord,
+    from_parent: Option<Direction>,
 }
 
 impl PathNode for BfsNode {
@@ -54,7 +55,7 @@ impl BfsContext {
         goal: Coord,
         directions: D,
         path: &mut Vec<Direction>,
-    ) -> Result<(), Error>
+    ) -> Result<SearchMetadata, Error>
     where
         G: SolidGrid,
         V: Into<Direction>,
@@ -69,7 +70,7 @@ impl BfsContext {
 
             if start == goal {
                 path.clear();
-                return Ok(());
+                return Ok(Default::default());
             }
 
             self.seq += 1;
@@ -83,7 +84,12 @@ impl BfsContext {
             return Err(Error::StartOutsideGrid);
         };
 
+        let mut num_nodes_visited = 0;
+
         while let Some(current_index) = self.queue.pop_front() {
+
+            num_nodes_visited += 1;
+
             let current_coord = self.node_grid[current_index].coord;
             for v in directions {
                 let direction = v.into();
@@ -106,7 +112,9 @@ impl BfsContext {
 
                     if neighbour_coord == goal {
                         path::make_path(&self.node_grid, index, path);
-                        return Ok(());
+                        return Ok(SearchMetadata {
+                            num_nodes_visited,
+                        });
                     }
                 }
             }

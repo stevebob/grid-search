@@ -53,8 +53,10 @@ where
     let (grid, start, goal) = grid_from_strings(strings);
     let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    ctx.search(&grid, start, goal, directions, &mut path)
+    let metadata = ctx.search(&grid, start, goal, directions, &mut path)
         .unwrap();
+
+    println!("{:?}", metadata);
 
     assert_eq!(path.len(), length);
 

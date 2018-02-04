@@ -91,8 +91,10 @@ fn common_test<V, D>(
     let (grid, start, goal) = grid_from_strings(strings, ordinal_multiplier);
     let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    ctx.search(&grid, start, goal, directions, &mut path)
+    let metadata = ctx.search(&grid, start, goal, directions, &mut path)
         .unwrap();
+
+    println!("{:?}", metadata);
 
     assert_eq!(path.len(), length);
 

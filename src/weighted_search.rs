@@ -4,15 +4,16 @@ use direction::Direction;
 use grid_2d::*;
 use grid::*;
 use error::*;
+use metadata::*;
 use path::{self, PathNode};
 
 #[derive(Debug, Clone, Copy)]
 pub struct WeightedSearchNode {
-    pub seen: u64,
-    pub visited: u64,
-    pub coord: Coord,
-    pub from_parent: Option<Direction>,
-    pub cost: u32,
+    seen: u64,
+    visited: u64,
+    coord: Coord,
+    from_parent: Option<Direction>,
+    cost: u32,
 }
 
 impl PathNode for WeightedSearchNode {
@@ -91,7 +92,7 @@ impl WeightedSearchContext {
         goal: Coord,
         directions: D,
         path: &mut Vec<Direction>,
-    ) -> Result<(), Error>
+    ) -> Result<SearchMetadata, Error>
     where
         G: CostGrid,
         V: Into<Direction>,
@@ -106,7 +107,7 @@ impl WeightedSearchContext {
 
             if start == goal {
                 path.clear();
-                return Ok(());
+                return Ok(Default::default());
             }
 
             self.seq += 1;
@@ -128,11 +129,17 @@ impl WeightedSearchContext {
             return Err(Error::GoalOutsideGrid);
         };
 
+        let mut num_nodes_visited = 0;
+
         while let Some(current_entry) = self.priority_queue.pop() {
+
+            num_nodes_visited += 1;
 
             if current_entry.node_index == goal_index {
                 path::make_path(&self.node_grid, goal_index, path);
-                return Ok(());
+                return Ok(SearchMetadata {
+                    num_nodes_visited,
+                });
             }
 
             let current_coord = {

@@ -7,7 +7,11 @@ pub trait PathNode {
     fn coord(&self) -> Coord;
 }
 
-pub fn make_path<N: PathNode>(node_grid: &Grid<N>, goal_index: usize, path: &mut Vec<Direction>) {
+pub(crate) fn make_path<N: PathNode>(
+    node_grid: &Grid<N>,
+    goal_index: usize,
+    path: &mut Vec<Direction>,
+) {
     path.clear();
     let mut index = goal_index;
     while let Some(from_parent) = node_grid[index].from_parent() {
