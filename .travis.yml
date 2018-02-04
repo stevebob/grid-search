@@ -1,4 +1,5 @@
 language: rust
+
 rust:
   - stable
   - beta
@@ -17,9 +18,9 @@ addons:
       - kcov
 
 script:
-- cargo test
+  - cargo test
 
 after_success: |
-    for file in target/debug/grid_search-*[^\.d]; do mkdir -p "target/cov/$(basename $file)"; kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
+  for file in target/debug/grid_search-*[^\.d]; do mkdir -p "target/cov/$(basename $file)"; kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
   bash <(curl -s https://codecov.io/bash) &&
   echo "Uploaded code coverage"
