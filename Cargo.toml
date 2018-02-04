@@ -1,5 +1,6 @@
 [package]
 name = "grid_search"
+description = "Collection of searching algorithms"
 version = "0.1.0"
 authors = ["Stephen Sherratt <sfsherratt@gmail.com>"]
 license = "MIT"
