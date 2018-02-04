@@ -4,6 +4,7 @@ use grid::*;
 use path::PathWalk;
 use weighted_search::*;
 use error::*;
+use metadata::*;
 
 const DEFAULT_ORDINAL_MULTIPLIER: u32 = 2;
 
@@ -78,39 +79,73 @@ fn grid_from_strings(strings: &Vec<&str>, ordinal_multiplier: u32) -> (TestGrid,
     (grid, start.unwrap(), goal.unwrap())
 }
 
-fn common_test<V, D>(
+fn common_test(
     strings: &Vec<&str>,
     ordinal_multiplier: u32,
-    directions: D,
+    cardinal_only: bool,
     length: usize,
     cost: u32,
-) where
-    V: Into<Direction>,
-    D: Copy + IntoIterator<Item = V>,
-{
+) {
     let (grid, start, goal) = grid_from_strings(strings, ordinal_multiplier);
     let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
+
+    let check_result = |path: &Vec<_>, metadata: SearchMetadata, using_heuristic| {
+
+        assert_eq!(path.len(), length);
+
+        let walk = PathWalk::new(start, &path);
+
+        let (should_be_goal, total_cost) =
+            walk.fold((start, 0), |(_, total_cost), (coord, direction)| {
+                if let Some(cost) = grid.cost(coord, direction) {
+                    (coord, total_cost + cost)
+                } else {
+                    panic!("Path goes through wall");
+                }
+            });
+
+        assert_eq!(should_be_goal, goal);
+        assert_eq!(total_cost, cost);
+
+        metadata.num_nodes_visited
+    };
+
     let mut path = Vec::new();
-    let metadata = ctx.search(&grid, start, goal, directions, &mut path)
-        .unwrap();
 
-    println!("{:?}", metadata);
+    let (with_heuristic, without_heuristic) = if cardinal_only {
 
-    assert_eq!(path.len(), length);
+        let metadata = ctx.search(&grid, start, goal, DirectionsCardinal, &mut path)
+            .unwrap();
+        let without_heuristic = check_result(&path, metadata, false);
 
-    let walk = PathWalk::new(start, &path);
+        let metadata =
+            ctx.search_cardinal_manhatten_distance_heuristic(&grid, start, goal, &mut path)
+                .unwrap();
+        let with_heuristic = check_result(&path, metadata, true);
 
-    let (should_be_goal, total_cost) =
-        walk.fold((start, 0), |(_, total_cost), (coord, direction)| {
-            if let Some(cost) = grid.cost(coord, direction) {
-                (coord, total_cost + cost)
-            } else {
-                panic!("Path goes through wall");
-            }
-        });
+        (with_heuristic, without_heuristic)
 
-    assert_eq!(should_be_goal, goal);
-    assert_eq!(total_cost, cost);
+    } else {
+
+        let metadata = ctx.search(&grid, start, goal, Directions, &mut path)
+            .unwrap();
+        let without_heuristic = check_result(&path, metadata, false);
+
+        let weights = HeuristicDirectionWeights::new(1, ordinal_multiplier);
+
+        let metadata =
+            ctx.search_diagonal_distance_heuristic(&grid, start, goal, weights, &mut path)
+                .unwrap();
+        let with_heuristic = check_result(&path, metadata, true);
+
+        (with_heuristic, without_heuristic)
+    };
+
+    println!(
+        "Nodes visited: {}, Nodes visited with heuristic, {}",
+        without_heuristic,
+        with_heuristic
+    );
 }
 
 #[test]
@@ -127,8 +162,8 @@ fn uniform_wall() {
         "..........",
         "..........",
     ];
-    common_test(&strings, 1, CardinalDirections, 12, 12);
-    common_test(&strings, 1, Directions, 7, 7);
+    common_test(&strings, 1, true, 12, 12);
+    common_test(&strings, 1, false, 7, 7);
 }
 
 #[test]
@@ -145,8 +180,8 @@ fn non_uniform_wall() {
         "....,,....",
         "....,,....",
     ];
-    common_test(&strings, 1, CardinalDirections, 16, 25);
-    common_test(&strings, 1, Directions, 9, 18);
+    common_test(&strings, 1, true, 16, 25);
+    common_test(&strings, 1, false, 9, 18);
 }
 
 #[test]
@@ -163,8 +198,8 @@ fn cheap_route() {
         "....,,,...",
         "....,,,...",
     ];
-    common_test(&strings, 1, CardinalDirections, 9, 18);
-    common_test(&strings, 1, Directions, 15, 15);
+    common_test(&strings, 1, true, 9, 18);
+    common_test(&strings, 1, false, 15, 15);
 }
 
 #[test]
@@ -199,14 +234,8 @@ fn start_is_goal() {
         "..........",
         "..........",
     ];
-    common_test(
-        &strings,
-        DEFAULT_ORDINAL_MULTIPLIER,
-        CardinalDirections,
-        0,
-        0,
-    );
-    common_test(&strings, DEFAULT_ORDINAL_MULTIPLIER, Directions, 0, 0);
+    common_test(&strings, DEFAULT_ORDINAL_MULTIPLIER, true, 0, 0);
+    common_test(&strings, DEFAULT_ORDINAL_MULTIPLIER, false, 0, 0);
 }
 
 #[test]
@@ -292,6 +321,6 @@ fn simple_optimality() {
         "..........",
     ];
 
-    common_test(&strings, 20, Directions, 2, 2);
-    common_test(&strings, 1, Directions, 1, 1);
+    common_test(&strings, 20, false, 2, 2);
+    common_test(&strings, 1, false, 1, 1);
 }

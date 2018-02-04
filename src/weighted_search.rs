@@ -1,6 +1,6 @@
 use std::collections::BinaryHeap;
 use std::cmp::Ordering;
-use direction::Direction;
+use direction::*;
 use grid_2d::*;
 use grid::*;
 use error::*;
@@ -98,6 +98,59 @@ impl WeightedSearchContext {
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
     {
+        self.search_general(grid, start, goal, directions, |_, _| 0, path)
+    }
+
+    pub fn search_cardinal_manhatten_distance_heuristic<G>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        goal: Coord,
+        path: &mut Vec<Direction>,
+    ) -> Result<SearchMetadata, Error>
+    where
+        G: CostGrid,
+    {
+        self.search_general(
+            grid,
+            start,
+            goal,
+            DirectionsCardinal,
+            manhatten_distance,
+            path,
+        )
+    }
+
+    pub fn search_diagonal_distance_heuristic<G>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        goal: Coord,
+        weights: HeuristicDirectionWeights,
+        path: &mut Vec<Direction>,
+    ) -> Result<SearchMetadata, Error>
+    where
+        G: CostGrid,
+    {
+        let heuristic_fn = |a, b| diagonal_distance(a, b, weights);
+        self.search_general(grid, start, goal, Directions, heuristic_fn, path)
+    }
+
+    pub fn search_general<G, V, D, F>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        goal: Coord,
+        directions: D,
+        heuristic_fn: F,
+        path: &mut Vec<Direction>,
+    ) -> Result<SearchMetadata, Error>
+    where
+        G: CostGrid,
+        V: Into<Direction>,
+        D: Copy + IntoIterator<Item = V>,
+        F: Fn(Coord, Coord) -> u32,
+    {
 
         if let Some(index) = self.node_grid.coord_to_index(start) {
 
@@ -117,7 +170,9 @@ impl WeightedSearchContext {
             node.from_parent = None;
             node.seen = self.seq;
             node.cost = 0;
-            let entry = PriorityEntry::new(index, 0);
+
+            let heuristic = heuristic_fn(start, goal);
+            let entry = PriorityEntry::new(index, heuristic);
             self.priority_queue.push(entry);
         } else {
             return Err(Error::StartOutsideGrid);
@@ -137,22 +192,20 @@ impl WeightedSearchContext {
 
             if current_entry.node_index == goal_index {
                 path::make_path(&self.node_grid, goal_index, path);
-                return Ok(SearchMetadata {
-                    num_nodes_visited,
-                });
+                return Ok(SearchMetadata { num_nodes_visited });
             }
 
-            let current_coord = {
+            let (current_coord, current_cost) = {
                 let node = &mut self.node_grid[current_entry.node_index];
                 if node.visited == self.seq {
                     continue;
                 }
                 node.visited = self.seq;
-                node.coord
+                (node.coord, node.cost)
             };
 
-            for v in directions {
-                let direction = v.into();
+            for d in directions {
+                let direction = d.into();
                 let offset: Coord = direction.into();
                 let neighbour_coord = current_coord + offset;
 
@@ -167,13 +220,15 @@ impl WeightedSearchContext {
 
                     let node = &mut self.node_grid[index];
 
-                    let cost = current_entry.cost + neighbour_cost;
+                    let cost = current_cost + neighbour_cost;
 
                     if node.seen != self.seq || node.cost > cost {
                         node.from_parent = Some(direction);
                         node.seen = self.seq;
                         node.cost = cost;
-                        let entry = PriorityEntry::new(index, cost);
+
+                        let heuristic = cost + heuristic_fn(neighbour_coord, goal);
+                        let entry = PriorityEntry::new(index, heuristic);
                         self.priority_queue.push(entry);
                     }
 
@@ -183,4 +238,32 @@ impl WeightedSearchContext {
 
         Err(Error::NoPath)
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct HeuristicDirectionWeights {
+    pub cardinal: u32,
+    pub ordinal: u32,
+}
+
+impl HeuristicDirectionWeights {
+    pub fn new(cardinal: u32, ordinal: u32) -> Self {
+        Self { cardinal, ordinal }
+    }
+}
+
+fn manhatten_distance(a: Coord, b: Coord) -> u32 {
+    (a.x - b.x).abs() as u32 + (a.y - b.y).abs() as u32
+}
+
+fn diagonal_distance(a: Coord, b: Coord, weights: HeuristicDirectionWeights) -> u32 {
+    let dx = (a.x - b.x).abs() as u32;
+    let dy = (a.y - b.y).abs() as u32;
+    let (cardinal, ordinal) = if dx < dy {
+        (dy - dx, dx)
+    } else {
+        (dx - dy, dy)
+    };
+
+    cardinal * weights.cardinal + ordinal * weights.ordinal
 }
