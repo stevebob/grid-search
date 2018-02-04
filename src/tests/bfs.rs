@@ -46,13 +46,15 @@ impl SolidGrid for Grid<bool> {
 }
 
 fn common_test<V, D>(strings: &Vec<&str>, directions: D, length: usize)
-    where V: Into<Direction>,
-          D: Copy + IntoIterator<Item=V>,
+where
+    V: Into<Direction>,
+    D: Copy + IntoIterator<Item = V>,
 {
     let (grid, start, goal) = grid_from_strings(strings);
     let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    ctx.search(&grid, start, goal, directions, &mut path).unwrap();
+    ctx.search(&grid, start, goal, directions, &mut path)
+        .unwrap();
 
     assert_eq!(path.len(), length);
 
@@ -60,7 +62,8 @@ fn common_test<V, D>(strings: &Vec<&str>, directions: D, length: usize)
 
     let (should_be_goal, _) = walk.inspect(|&(coord, _)| {
         assert!(!grid.is_solid(coord));
-    }).last().unwrap_or((start, Direction::North));
+    }).last()
+        .unwrap_or((start, Direction::North));
 
     assert_eq!(should_be_goal, goal);
 }
@@ -112,6 +115,7 @@ fn start_is_goal() {
         "..........",
         "....#.....",
         ".B..#.....",
+        "..........",
         "..........",
     ];
     common_test(&strings, CardinalDirections, 0);

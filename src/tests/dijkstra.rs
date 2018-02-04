@@ -13,8 +13,12 @@ struct TestGrid {
 }
 
 impl TestGrid {
-    fn width(&self) -> u32 { self.grid.width() }
-    fn height(&self) -> u32 { self.grid.height() }
+    fn width(&self) -> u32 {
+        self.grid.width()
+    }
+    fn height(&self) -> u32 {
+        self.grid.height()
+    }
 }
 
 impl SolidGrid for TestGrid {
@@ -74,26 +78,34 @@ fn grid_from_strings(strings: &Vec<&str>, ordinal_multiplier: u32) -> (TestGrid,
     (grid, start.unwrap(), goal.unwrap())
 }
 
-fn common_test<V, D>(strings: &Vec<&str>, ordinal_multiplier: u32, directions: D, length: usize, cost: u32)
-    where V: Into<Direction>,
-          D: Copy + IntoIterator<Item=V>,
+fn common_test<V, D>(
+    strings: &Vec<&str>,
+    ordinal_multiplier: u32,
+    directions: D,
+    length: usize,
+    cost: u32,
+) where
+    V: Into<Direction>,
+    D: Copy + IntoIterator<Item = V>,
 {
     let (grid, start, goal) = grid_from_strings(strings, ordinal_multiplier);
     let mut ctx = DijkstraContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    ctx.search(&grid, start, goal, directions, &mut path).unwrap();
+    ctx.search(&grid, start, goal, directions, &mut path)
+        .unwrap();
 
     assert_eq!(path.len(), length);
 
     let walk = PathWalk::new(start, &path);
 
-    let (should_be_goal, total_cost) = walk.fold((start, 0), |(_, total_cost), (coord, direction)| {
-        if let Some(cost) = grid.cost(coord, direction) {
-            (coord, total_cost + cost)
-        } else {
-            panic!("Path goes through wall");
-        }
-    });
+    let (should_be_goal, total_cost) =
+        walk.fold((start, 0), |(_, total_cost), (coord, direction)| {
+            if let Some(cost) = grid.cost(coord, direction) {
+                (coord, total_cost + cost)
+            } else {
+                panic!("Path goes through wall");
+            }
+        });
 
     assert_eq!(should_be_goal, goal);
     assert_eq!(total_cost, cost);
@@ -183,8 +195,15 @@ fn start_is_goal() {
         "....#.....",
         ".B..#.....",
         "..........",
+        "..........",
     ];
-    common_test(&strings, DEFAULT_ORDINAL_MULTIPLIER, CardinalDirections, 0, 0);
+    common_test(
+        &strings,
+        DEFAULT_ORDINAL_MULTIPLIER,
+        CardinalDirections,
+        0,
+        0,
+    );
     common_test(&strings, DEFAULT_ORDINAL_MULTIPLIER, Directions, 0, 0);
 }
 
@@ -266,6 +285,9 @@ fn simple_optimality() {
     let strings = vec![
         "....g.....",
         "...s......",
+        "..........",
+        "..........",
+        "..........",
     ];
 
     common_test(&strings, 20, Directions, 2, 2);

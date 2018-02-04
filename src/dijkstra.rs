@@ -16,8 +16,12 @@ pub struct DijkstraNode {
 }
 
 impl PathNode for DijkstraNode {
-    fn from_parent(&self) -> Option<Direction> { self.from_parent }
-    fn coord(&self) -> Coord { self.coord }
+    fn from_parent(&self) -> Option<Direction> {
+        self.from_parent
+    }
+    fn coord(&self) -> Coord {
+        self.coord
+    }
 }
 
 impl From<Coord> for DijkstraNode {
@@ -80,15 +84,18 @@ impl DijkstraContext {
         }
     }
 
-    pub fn search<G, V, D>(&mut self,
-                           grid: &G,
-                           start: Coord,
-                           goal: Coord,
-                           directions: D,
-                           path: &mut Vec<Direction>) -> Result<(), Error>
-        where G: CostGrid,
-              V: Into<Direction>,
-              D: Copy + IntoIterator<Item=V>,
+    pub fn search<G, V, D>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        goal: Coord,
+        directions: D,
+        path: &mut Vec<Direction>,
+    ) -> Result<(), Error>
+    where
+        G: CostGrid,
+        V: Into<Direction>,
+        D: Copy + IntoIterator<Item = V>,
     {
 
         if let Some(index) = self.node_grid.coord_to_index(start) {
@@ -144,11 +151,12 @@ impl DijkstraContext {
 
                 if let Some(index) = self.node_grid.coord_to_index(neighbour_coord) {
 
-                    let neighbour_cost = if let Some(cost) = grid.cost(neighbour_coord, direction) {
-                        cost
-                    } else {
-                        continue;
-                    };
+                    let neighbour_cost =
+                        if let Some(cost) = grid.cost(neighbour_coord, direction) {
+                            cost
+                        } else {
+                            continue;
+                        };
 
                     let node = &mut self.node_grid[index];
 

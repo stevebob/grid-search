@@ -13,8 +13,12 @@ pub struct BfsNode {
 }
 
 impl PathNode for BfsNode {
-    fn from_parent(&self) -> Option<Direction> { self.from_parent }
-    fn coord(&self) -> Coord { self.coord }
+    fn from_parent(&self) -> Option<Direction> {
+        self.from_parent
+    }
+    fn coord(&self) -> Coord {
+        self.coord
+    }
 }
 
 impl From<Coord> for BfsNode {
@@ -43,15 +47,18 @@ impl BfsContext {
         }
     }
 
-    pub fn search<G, V, D>(&mut self,
-                           grid: &G,
-                           start: Coord,
-                           goal: Coord,
-                           directions: D,
-                           path: &mut Vec<Direction>) -> Result<(), Error>
-        where G: SolidGrid,
-              V: Into<Direction>,
-              D: Copy + IntoIterator<Item=V>,
+    pub fn search<G, V, D>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        goal: Coord,
+        directions: D,
+        path: &mut Vec<Direction>,
+    ) -> Result<(), Error>
+    where
+        G: SolidGrid,
+        V: Into<Direction>,
+        D: Copy + IntoIterator<Item = V>,
     {
 
         if let Some(index) = self.node_grid.coord_to_index(start) {

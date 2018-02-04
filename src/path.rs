@@ -14,7 +14,8 @@ pub fn make_path<N: PathNode>(node_grid: &Grid<N>, goal_index: usize, path: &mut
         path.push(from_parent);
         let to_parent = from_parent.opposite();
         let offset: Coord = to_parent.into();
-        index = node_grid.coord_to_index(node_grid[index].coord() + offset)
+        index = node_grid
+            .coord_to_index(node_grid[index].coord() + offset)
             .expect("Invalid search state");
     }
     path.reverse();
