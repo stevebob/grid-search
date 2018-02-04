@@ -1,2 +1,2 @@
 mod bfs;
-mod dijkstra;
+mod weighted_search;

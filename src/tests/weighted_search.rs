@@ -2,7 +2,7 @@ use direction::*;
 use grid_2d::*;
 use grid::*;
 use path::PathWalk;
-use dijkstra::*;
+use weighted_search::*;
 use error::*;
 
 const DEFAULT_ORDINAL_MULTIPLIER: u32 = 2;
@@ -89,7 +89,7 @@ fn common_test<V, D>(
     D: Copy + IntoIterator<Item = V>,
 {
     let (grid, start, goal) = grid_from_strings(strings, ordinal_multiplier);
-    let mut ctx = DijkstraContext::new(grid.width(), grid.height());
+    let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     ctx.search(&grid, start, goal, directions, &mut path)
         .unwrap();
@@ -181,7 +181,7 @@ fn no_path() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
-    let mut ctx = DijkstraContext::new(grid.width(), grid.height());
+    let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
@@ -223,7 +223,7 @@ fn goal_is_solid() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
-    let mut ctx = DijkstraContext::new(grid.width(), grid.height());
+    let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
@@ -247,7 +247,7 @@ fn start_is_solid() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
-    let mut ctx = DijkstraContext::new(grid.width(), grid.height());
+    let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
@@ -273,7 +273,7 @@ fn start_outside_grid() {
 
     let start = Coord::new(-1, -1);
 
-    let mut ctx = DijkstraContext::new(grid.width(), grid.height());
+    let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 

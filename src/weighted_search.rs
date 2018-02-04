@@ -7,7 +7,7 @@ use error::*;
 use path::{self, PathNode};
 
 #[derive(Debug, Clone, Copy)]
-pub struct DijkstraNode {
+pub struct WeightedSearchNode {
     pub seen: u64,
     pub visited: u64,
     pub coord: Coord,
@@ -15,7 +15,7 @@ pub struct DijkstraNode {
     pub cost: u32,
 }
 
-impl PathNode for DijkstraNode {
+impl PathNode for WeightedSearchNode {
     fn from_parent(&self) -> Option<Direction> {
         self.from_parent
     }
@@ -24,7 +24,7 @@ impl PathNode for DijkstraNode {
     }
 }
 
-impl From<Coord> for DijkstraNode {
+impl From<Coord> for WeightedSearchNode {
     fn from(coord: Coord) -> Self {
         Self {
             seen: 0,
@@ -69,13 +69,13 @@ impl Ord for PriorityEntry {
 }
 
 #[derive(Debug, Clone)]
-pub struct DijkstraContext {
+pub struct WeightedSearchContext {
     seq: u64,
     priority_queue: BinaryHeap<PriorityEntry>,
-    node_grid: Grid<DijkstraNode>,
+    node_grid: Grid<WeightedSearchNode>,
 }
 
-impl DijkstraContext {
+impl WeightedSearchContext {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             seq: 0,
