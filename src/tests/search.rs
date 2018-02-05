@@ -2,7 +2,7 @@ use direction::*;
 use grid_2d::*;
 use grid::*;
 use path::PathWalk;
-use weighted_search::*;
+use search::*;
 use error::*;
 use metadata::*;
 
@@ -88,7 +88,7 @@ fn common_test(
     cost: u32,
 ) {
     let (grid, start, goal) = grid_from_strings(strings, ordinal_multiplier);
-    let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
+    let mut ctx = SearchContext::new(grid.width(), grid.height());
 
     let check_result = |path: &Vec<_>, metadata: SearchMetadata| {
 
@@ -219,7 +219,7 @@ fn no_path() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
-    let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
+    let mut ctx = SearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
@@ -255,7 +255,7 @@ fn goal_is_solid() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
-    let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
+    let mut ctx = SearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
@@ -279,7 +279,7 @@ fn start_is_solid() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
-    let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
+    let mut ctx = SearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 
@@ -305,7 +305,7 @@ fn start_outside_grid() {
 
     let start = Coord::new(-1, -1);
 
-    let mut ctx = WeightedSearchContext::new(grid.width(), grid.height());
+    let mut ctx = SearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     let result = ctx.search(&grid, start, goal, Directions, &mut path);
 

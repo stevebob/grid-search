@@ -1,2 +1,2 @@
 mod bfs;
-mod weighted_search;
+mod search;

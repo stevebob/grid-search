@@ -3,14 +3,14 @@ extern crate grid_2d;
 extern crate num_traits;
 
 mod bfs;
-mod weighted_search;
+mod search;
 mod grid;
 mod path;
 mod error;
 mod metadata;
 
 pub use bfs::*;
-pub use weighted_search::*;
+pub use search::*;
 pub use grid::*;
 pub use path::*;
 pub use error::*;
