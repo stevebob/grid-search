@@ -30,7 +30,7 @@ impl SolidGrid for TestGrid {
 
 impl CostGrid for TestGrid {
     type Cost = u32;
-    fn cost(&self, coord: Coord, direction: Direction) -> Option<u32> {
+    fn cost(&self, coord: Coord, direction: Direction) -> Option<Self::Cost> {
         let cost = self.grid.get(coord).cloned().unwrap()?;
         if direction.is_ordinal() {
             Some(cost * self.ordinal_multiplier)

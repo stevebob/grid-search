@@ -10,7 +10,7 @@ use metadata::*;
 use path::{self, PathNode};
 
 #[derive(Debug, Clone, Copy)]
-pub struct WeightedSearchNode<Cost: Add<Cost> + PartialOrd<Cost>> {
+struct WeightedSearchNode<Cost: Add<Cost> + PartialOrd<Cost>> {
     seen: u64,
     visited: u64,
     coord: Coord,
@@ -74,13 +74,13 @@ impl<Cost: Add<Cost> + PartialOrd<Cost>> Ord for PriorityEntry<Cost> {
 }
 
 #[derive(Debug, Clone)]
-pub struct WeightedSearchContext<Cost: Add<Cost> + PartialOrd<Cost>> {
+pub struct SearchContext<Cost: Add<Cost> + PartialOrd<Cost>> {
     seq: u64,
     priority_queue: BinaryHeap<PriorityEntry<Cost>>,
     node_grid: Grid<WeightedSearchNode<Cost>>,
 }
 
-impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> WeightedSearchContext<Cost> {
+impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             seq: 0,
@@ -209,7 +209,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> WeightedSearchContext<Cos
     }
 }
 
-impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> WeightedSearchContext<Cost> {
+impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> SearchContext<Cost> {
     pub fn search_cardinal_manhatten_distance_heuristic<G>(
         &mut self,
         grid: &G,
@@ -228,7 +228,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> WeightedSearchC
     }
 }
 
-impl<Cost> WeightedSearchContext<Cost>
+impl<Cost> SearchContext<Cost>
 where
     Cost: Copy
         + Add<Cost, Output = Cost>

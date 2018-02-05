@@ -7,7 +7,7 @@ use metadata::*;
 use path::{self, PathNode};
 
 #[derive(Debug, Clone, Copy)]
-pub struct BfsNode {
+struct BfsNode {
     seen: u64,
     coord: Coord,
     from_parent: Option<Direction>,

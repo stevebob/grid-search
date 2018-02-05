@@ -2,7 +2,7 @@ use std::slice;
 use direction::Direction;
 use grid_2d::*;
 
-pub trait PathNode {
+pub(crate) trait PathNode {
     fn from_parent(&self) -> Option<Direction>;
     fn coord(&self) -> Coord;
 }
