@@ -1,3 +1,4 @@
+use std::ops::Add;
 use grid_2d::Coord;
 use direction::Direction;
 
@@ -6,5 +7,6 @@ pub trait SolidGrid {
 }
 
 pub trait CostGrid: SolidGrid {
-    fn cost(&self, coord: Coord, direction: Direction) -> Option<u32>;
+    type Cost: Add<Self::Cost> + PartialOrd<Self::Cost>;
+    fn cost(&self, coord: Coord, direction: Direction) -> Option<Self::Cost>;
 }

@@ -1,5 +1,7 @@
 use std::collections::BinaryHeap;
+use std::ops::{Add, Mul};
 use std::cmp::Ordering;
+use num_traits::{Zero, NumCast};
 use direction::*;
 use grid_2d::*;
 use grid::*;
@@ -8,15 +10,27 @@ use metadata::*;
 use path::{self, PathNode};
 
 #[derive(Debug, Clone, Copy)]
-pub struct WeightedSearchNode {
+pub struct WeightedSearchNode<Cost: Add<Cost> + PartialOrd<Cost>> {
     seen: u64,
     visited: u64,
     coord: Coord,
     from_parent: Option<Direction>,
-    cost: u32,
+    cost: Cost,
 }
 
-impl PathNode for WeightedSearchNode {
+impl<Cost: Add<Cost> + PartialOrd<Cost> + Zero> From<Coord> for WeightedSearchNode<Cost> {
+    fn from(coord: Coord) -> Self {
+        Self {
+            seen: 0,
+            visited: 0,
+            coord,
+            from_parent: None,
+            cost: Zero::zero(),
+        }
+    }
+}
+
+impl<Cost: Add<Cost> + PartialOrd<Cost>> PathNode for WeightedSearchNode<Cost> {
     fn from_parent(&self) -> Option<Direction> {
         self.from_parent
     }
@@ -25,58 +39,46 @@ impl PathNode for WeightedSearchNode {
     }
 }
 
-impl From<Coord> for WeightedSearchNode {
-    fn from(coord: Coord) -> Self {
-        Self {
-            seen: 0,
-            visited: 0,
-            coord,
-            from_parent: None,
-            cost: 0,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
-struct PriorityEntry {
+struct PriorityEntry<Cost: Add<Cost> + PartialOrd<Cost>> {
     node_index: usize,
-    cost: u32,
+    cost: Cost,
 }
 
-impl PriorityEntry {
-    fn new(node_index: usize, cost: u32) -> Self {
-        PriorityEntry { node_index, cost }
+impl<Cost: Add<Cost> + PartialOrd<Cost>> PriorityEntry<Cost> {
+    fn new(node_index: usize, cost: Cost) -> Self {
+        Self { node_index, cost }
     }
 }
 
-impl PartialEq for PriorityEntry {
+impl<Cost: Add<Cost> + PartialOrd<Cost>> PartialEq for PriorityEntry<Cost> {
     fn eq(&self, other: &Self) -> bool {
         self.cost == other.cost
     }
 }
 
-impl PartialOrd for PriorityEntry {
+impl<Cost: Add<Cost> + PartialOrd<Cost>> PartialOrd for PriorityEntry<Cost> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         other.cost.partial_cmp(&self.cost)
     }
 }
 
-impl Eq for PriorityEntry {}
+impl<Cost: Add<Cost> + PartialOrd<Cost>> Eq for PriorityEntry<Cost> {}
 
-impl Ord for PriorityEntry {
+impl<Cost: Add<Cost> + PartialOrd<Cost>> Ord for PriorityEntry<Cost> {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.cost.cmp(&self.cost)
+        other.cost.partial_cmp(&self.cost).unwrap_or(Ordering::Equal)
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct WeightedSearchContext {
+pub struct WeightedSearchContext<Cost: Add<Cost> + PartialOrd<Cost>> {
     seq: u64,
-    priority_queue: BinaryHeap<PriorityEntry>,
-    node_grid: Grid<WeightedSearchNode>,
+    priority_queue: BinaryHeap<PriorityEntry<Cost>>,
+    node_grid: Grid<WeightedSearchNode<Cost>>,
 }
 
-impl WeightedSearchContext {
+impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> WeightedSearchContext<Cost> {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             seq: 0,
@@ -94,46 +96,11 @@ impl WeightedSearchContext {
         path: &mut Vec<Direction>,
     ) -> Result<SearchMetadata, Error>
     where
-        G: CostGrid,
+        G: CostGrid<Cost = Cost>,
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
     {
-        self.search_general(grid, start, goal, directions, |_, _| 0, path)
-    }
-
-    pub fn search_cardinal_manhatten_distance_heuristic<G>(
-        &mut self,
-        grid: &G,
-        start: Coord,
-        goal: Coord,
-        path: &mut Vec<Direction>,
-    ) -> Result<SearchMetadata, Error>
-    where
-        G: CostGrid,
-    {
-        self.search_general(
-            grid,
-            start,
-            goal,
-            DirectionsCardinal,
-            manhatten_distance,
-            path,
-        )
-    }
-
-    pub fn search_diagonal_distance_heuristic<G>(
-        &mut self,
-        grid: &G,
-        start: Coord,
-        goal: Coord,
-        weights: HeuristicDirectionWeights,
-        path: &mut Vec<Direction>,
-    ) -> Result<SearchMetadata, Error>
-    where
-        G: CostGrid,
-    {
-        let heuristic_fn = |a, b| diagonal_distance(a, b, weights);
-        self.search_general(grid, start, goal, Directions, heuristic_fn, path)
+        self.search_general(grid, start, goal, directions, |_, _| Zero::zero(), path)
     }
 
     pub fn search_general<G, V, D, F>(
@@ -146,10 +113,10 @@ impl WeightedSearchContext {
         path: &mut Vec<Direction>,
     ) -> Result<SearchMetadata, Error>
     where
-        G: CostGrid,
+        G: CostGrid<Cost = Cost>,
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
-        F: Fn(Coord, Coord) -> u32,
+        F: Fn(Coord, Coord) -> Cost,
     {
 
         if let Some(index) = self.node_grid.coord_to_index(start) {
@@ -169,7 +136,7 @@ impl WeightedSearchContext {
             let node = &mut self.node_grid[index];
             node.from_parent = None;
             node.seen = self.seq;
-            node.cost = 0;
+            node.cost = Zero::zero();
 
             let heuristic = heuristic_fn(start, goal);
             let entry = PriorityEntry::new(index, heuristic);
@@ -240,30 +207,87 @@ impl WeightedSearchContext {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct HeuristicDirectionWeights {
-    pub cardinal: u32,
-    pub ordinal: u32,
+impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> WeightedSearchContext<Cost> {
+
+    pub fn search_cardinal_manhatten_distance_heuristic<G>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        goal: Coord,
+        path: &mut Vec<Direction>,
+    ) -> Result<SearchMetadata, Error>
+    where
+        G: CostGrid<Cost = Cost>,
+    {
+
+        let heuristic_fn = |a, b| {
+            NumCast::from(manhatten_distance(a, b)).expect("Failed to cast to Cost")
+        };
+
+        self.search_general(
+            grid,
+            start,
+            goal,
+            DirectionsCardinal,
+            heuristic_fn,
+            path,
+        )
+    }
 }
 
-impl HeuristicDirectionWeights {
-    pub fn new(cardinal: u32, ordinal: u32) -> Self {
+impl<Cost: Copy + Add<Cost, Output = Cost> + Mul<Cost, Output = Cost> + PartialOrd<Cost> + NumCast + Zero> WeightedSearchContext<Cost> {
+    pub fn search_diagonal_distance_heuristic<G>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        goal: Coord,
+        weights: HeuristicDirectionWeights<Cost>,
+        path: &mut Vec<Direction>,
+    ) -> Result<SearchMetadata, Error>
+    where
+        G: CostGrid<Cost = Cost>,
+    {
+        let heuristic_fn = |a, b| diagonal_distance(a, b, &weights);
+        self.search_general(grid, start, goal, Directions, heuristic_fn, path)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct HeuristicDirectionWeights<Cost: Add<Cost> + PartialOrd<Cost>> {
+    pub cardinal: Cost,
+    pub ordinal: Cost,
+}
+
+impl<Cost: Add<Cost> + PartialOrd<Cost> + Zero> HeuristicDirectionWeights<Cost> {
+    pub fn new(cardinal: Cost, ordinal: Cost) -> Self {
         Self { cardinal, ordinal }
     }
 }
 
-fn manhatten_distance(a: Coord, b: Coord) -> u32 {
-    (a.x - b.x).abs() as u32 + (a.y - b.y).abs() as u32
+fn manhatten_distance(a: Coord, b: Coord) -> i32 {
+    (a.x - b.x).abs() + (a.y - b.y).abs()
 }
 
-fn diagonal_distance(a: Coord, b: Coord, weights: HeuristicDirectionWeights) -> u32 {
-    let dx = (a.x - b.x).abs() as u32;
-    let dy = (a.y - b.y).abs() as u32;
+fn diagonal_distance<Cost>(
+    a: Coord,
+    b: Coord, weights: &HeuristicDirectionWeights<Cost>) -> Cost
+
+where Cost: Copy + Add<Cost, Output = Cost> + Mul<Cost, Output = Cost> + PartialOrd<Cost> + NumCast
+
+{
+    let dx = (a.x - b.x).abs();
+    let dy = (a.y - b.y).abs();
     let (cardinal, ordinal) = if dx < dy {
         (dy - dx, dx)
     } else {
         (dx - dy, dy)
     };
 
-    cardinal * weights.cardinal + ordinal * weights.ordinal
+    let cardinal: Cost = NumCast::from(cardinal).expect("Failed to cast to Cost");
+    let ordinal: Cost = NumCast::from(ordinal).expect("Failed to cast to Cost");
+
+    let cardinal: Cost = cardinal * weights.cardinal;
+    let ordinal: Cost = ordinal * weights.ordinal;
+
+    cardinal + ordinal
 }

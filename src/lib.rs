@@ -1,5 +1,6 @@
 extern crate direction;
 extern crate grid_2d;
+extern crate num_traits;
 
 mod bfs;
 mod weighted_search;
