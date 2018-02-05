@@ -67,7 +67,9 @@ impl<Cost: Add<Cost> + PartialOrd<Cost>> Eq for PriorityEntry<Cost> {}
 
 impl<Cost: Add<Cost> + PartialOrd<Cost>> Ord for PriorityEntry<Cost> {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.cost.partial_cmp(&self.cost).unwrap_or(Ordering::Equal)
+        other.cost.partial_cmp(&self.cost).unwrap_or(
+            Ordering::Equal,
+        )
     }
 }
 
@@ -208,7 +210,6 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> WeightedSearchContext<Cos
 }
 
 impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> WeightedSearchContext<Cost> {
-
     pub fn search_cardinal_manhatten_distance_heuristic<G>(
         &mut self,
         grid: &G,
@@ -220,22 +221,22 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> WeightedSearchC
         G: CostGrid<Cost = Cost>,
     {
 
-        let heuristic_fn = |a, b| {
-            NumCast::from(manhatten_distance(a, b)).expect("Failed to cast to Cost")
-        };
+        let heuristic_fn =
+            |a, b| NumCast::from(manhatten_distance(a, b)).expect("Failed to cast to Cost");
 
-        self.search_general(
-            grid,
-            start,
-            goal,
-            DirectionsCardinal,
-            heuristic_fn,
-            path,
-        )
+        self.search_general(grid, start, goal, DirectionsCardinal, heuristic_fn, path)
     }
 }
 
-impl<Cost: Copy + Add<Cost, Output = Cost> + Mul<Cost, Output = Cost> + PartialOrd<Cost> + NumCast + Zero> WeightedSearchContext<Cost> {
+impl<Cost> WeightedSearchContext<Cost>
+where
+    Cost: Copy
+        + Add<Cost, Output = Cost>
+        + Mul<Cost, Output = Cost>
+        + PartialOrd<Cost>
+        + NumCast
+        + Zero,
+{
     pub fn search_diagonal_distance_heuristic<G>(
         &mut self,
         grid: &G,
@@ -268,12 +269,9 @@ fn manhatten_distance(a: Coord, b: Coord) -> i32 {
     (a.x - b.x).abs() + (a.y - b.y).abs()
 }
 
-fn diagonal_distance<Cost>(
-    a: Coord,
-    b: Coord, weights: &HeuristicDirectionWeights<Cost>) -> Cost
-
-where Cost: Copy + Add<Cost, Output = Cost> + Mul<Cost, Output = Cost> + PartialOrd<Cost> + NumCast
-
+fn diagonal_distance<Cost>(a: Coord, b: Coord, weights: &HeuristicDirectionWeights<Cost>) -> Cost
+where
+    Cost: Copy + Add<Cost, Output = Cost> + Mul<Cost, Output = Cost> + PartialOrd<Cost> + NumCast,
 {
     let dx = (a.x - b.x).abs();
     let dy = (a.y - b.y).abs();
