@@ -102,28 +102,47 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
     {
-        self.search_general(grid, start, goal, directions, |_, _| Zero::zero(), path)
+        self.search_general(grid, start, goal, directions, &Self::adjacent_successor, |_, _| Zero::zero(), path)
     }
 
-    pub fn search_general<G, V, D, F>(
+    fn adjacent_successor<G>(grid: &G, coord: Coord, direction: Direction) -> Option<(Coord, Cost)>
+    where
+        G: CostGrid<Cost = Cost>,
+    {
+        let offset: Coord = direction.into();
+        let neighbour_coord = coord + offset;
+
+        if let Some(CostCell::Cost(cost)) = grid.cost(neighbour_coord, direction) {
+            Some((neighbour_coord, cost))
+        } else {
+            None
+        }
+    }
+
+    fn search_general<G, V, D, S, H>(
         &mut self,
         grid: &G,
         start: Coord,
         goal: Coord,
         directions: D,
-        heuristic_fn: F,
+        successor_fn: &S,
+        heuristic_fn: H,
         path: &mut Vec<Direction>,
     ) -> Result<SearchMetadata, Error>
     where
         G: CostGrid<Cost = Cost>,
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
-        F: Fn(Coord, Coord) -> Cost,
+        S: Fn(&G, Coord, Direction) -> Option<(Coord, Cost)>,
+        H: Fn(Coord, Coord) -> Cost,
+
     {
+        if let Some(solid) = grid.is_solid(start) {
 
-        if let Some(index) = self.node_grid.coord_to_index(start) {
+            let index = self.node_grid.coord_to_index(start)
+                .expect("SearchContext too small for grid");
 
-            if grid.is_solid(start) {
+            if solid {
                 return Err(Error::StartSolid);
             };
 
@@ -140,18 +159,14 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
             node.seen = self.seq;
             node.cost = Zero::zero();
 
-            let heuristic = heuristic_fn(start, goal);
-            let entry = PriorityEntry::new(index, heuristic);
+            let entry = PriorityEntry::new(index, Zero::zero());
             self.priority_queue.push(entry);
         } else {
             return Err(Error::StartOutsideGrid);
         };
 
-        let goal_index = if let Some(goal_index) = self.node_grid.coord_to_index(goal) {
-            goal_index
-        } else {
-            return Err(Error::GoalOutsideGrid);
-        };
+        let goal_index = self.node_grid.coord_to_index(goal)
+            .expect("SearchContext too small for grid");
 
         let mut num_nodes_visited = 0;
 
@@ -175,32 +190,30 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
 
             for d in directions {
                 let direction = d.into();
-                let offset: Coord = direction.into();
-                let neighbour_coord = current_coord + offset;
 
-                if let Some(index) = self.node_grid.coord_to_index(neighbour_coord) {
+                let (neighbour_coord, neighbour_cost) =
+                    if let Some((neighbour_coord, neighbour_cost)) =
+                        successor_fn(grid, current_coord, direction) {
+                        (neighbour_coord, neighbour_cost)
+                    } else {
+                        continue;
+                    };
 
-                    let neighbour_cost =
-                        if let Some(cost) = grid.cost(neighbour_coord, direction) {
-                            cost
-                        } else {
-                            continue;
-                        };
+                let index = self.node_grid.coord_to_index(neighbour_coord)
+                    .expect("SearchContext too small for grid");
 
-                    let node = &mut self.node_grid[index];
+                let node = &mut self.node_grid[index];
 
-                    let cost = current_cost + neighbour_cost;
+                let cost = current_cost + neighbour_cost;
 
-                    if node.seen != self.seq || node.cost > cost {
-                        node.from_parent = Some(direction);
-                        node.seen = self.seq;
-                        node.cost = cost;
+                if node.seen != self.seq || node.cost > cost {
+                    node.from_parent = Some(direction);
+                    node.seen = self.seq;
+                    node.cost = cost;
 
-                        let heuristic = cost + heuristic_fn(neighbour_coord, goal);
-                        let entry = PriorityEntry::new(index, heuristic);
-                        self.priority_queue.push(entry);
-                    }
-
+                    let heuristic = cost + heuristic_fn(neighbour_coord, goal);
+                    let entry = PriorityEntry::new(index, heuristic);
+                    self.priority_queue.push(entry);
                 }
             }
         }
@@ -210,6 +223,11 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
 }
 
 impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> SearchContext<Cost> {
+
+    fn manhatten_distance(a: Coord, b: Coord) -> i32 {
+        (a.x - b.x).abs() + (a.y - b.y).abs()
+    }
+
     pub fn search_cardinal_manhatten_distance_heuristic<G>(
         &mut self,
         grid: &G,
@@ -222,34 +240,9 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> SearchContext<C
     {
 
         let heuristic_fn =
-            |a, b| NumCast::from(manhatten_distance(a, b)).expect("Failed to cast to Cost");
+            |a, b| NumCast::from(Self::manhatten_distance(a, b)).expect("Failed to cast to Cost");
 
-        self.search_general(grid, start, goal, DirectionsCardinal, heuristic_fn, path)
-    }
-}
-
-impl<Cost> SearchContext<Cost>
-where
-    Cost: Copy
-        + Add<Cost, Output = Cost>
-        + Mul<Cost, Output = Cost>
-        + PartialOrd<Cost>
-        + NumCast
-        + Zero,
-{
-    pub fn search_diagonal_distance_heuristic<G>(
-        &mut self,
-        grid: &G,
-        start: Coord,
-        goal: Coord,
-        weights: HeuristicDirectionWeights<Cost>,
-        path: &mut Vec<Direction>,
-    ) -> Result<SearchMetadata, Error>
-    where
-        G: CostGrid<Cost = Cost>,
-    {
-        let heuristic_fn = |a, b| diagonal_distance(a, b, &weights);
-        self.search_general(grid, start, goal, Directions, heuristic_fn, path)
+        self.search_general(grid, start, goal, DirectionsCardinal, &Self::adjacent_successor, heuristic_fn, path)
     }
 }
 
@@ -265,27 +258,87 @@ impl<Cost: Add<Cost> + PartialOrd<Cost> + Zero> HeuristicDirectionWeights<Cost> 
     }
 }
 
-fn manhatten_distance(a: Coord, b: Coord) -> i32 {
-    (a.x - b.x).abs() + (a.y - b.y).abs()
+
+impl<Cost> SearchContext<Cost>
+where
+    Cost: Copy
+        + Add<Cost, Output = Cost>
+        + Mul<Cost, Output = Cost>
+        + PartialOrd<Cost>
+        + NumCast
+        + Zero,
+{
+
+    fn diagonal_distance(a: Coord, b: Coord, weights: &HeuristicDirectionWeights<Cost>) -> Cost
+    {
+        let dx = (a.x - b.x).abs();
+        let dy = (a.y - b.y).abs();
+        let (cardinal, ordinal) = if dx < dy {
+            (dy - dx, dx)
+        } else {
+            (dx - dy, dy)
+        };
+
+        let cardinal: Cost = NumCast::from(cardinal).expect("Failed to cast to Cost");
+        let ordinal: Cost = NumCast::from(ordinal).expect("Failed to cast to Cost");
+
+        let cardinal: Cost = cardinal * weights.cardinal;
+        let ordinal: Cost = ordinal * weights.ordinal;
+
+        cardinal + ordinal
+    }
+
+    pub fn search_diagonal_distance_heuristic<G>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        goal: Coord,
+        weights: HeuristicDirectionWeights<Cost>,
+        path: &mut Vec<Direction>,
+    ) -> Result<SearchMetadata, Error>
+    where
+        G: CostGrid<Cost = Cost>,
+    {
+        let heuristic_fn = |a, b| Self::diagonal_distance(a, b, &weights);
+        self.search_general(grid, start, goal, Directions, &Self::adjacent_successor, heuristic_fn, path)
+    }
 }
 
-fn diagonal_distance<Cost>(a: Coord, b: Coord, weights: &HeuristicDirectionWeights<Cost>) -> Cost
-where
-    Cost: Copy + Add<Cost, Output = Cost> + Mul<Cost, Output = Cost> + PartialOrd<Cost> + NumCast,
-{
-    let dx = (a.x - b.x).abs();
-    let dy = (a.y - b.y).abs();
-    let (cardinal, ordinal) = if dx < dy {
-        (dy - dx, dx)
-    } else {
-        (dx - dy, dy)
-    };
+impl SearchContext<f64> {
 
-    let cardinal: Cost = NumCast::from(cardinal).expect("Failed to cast to Cost");
-    let ordinal: Cost = NumCast::from(ordinal).expect("Failed to cast to Cost");
+    fn octile_distance(a: Coord, b: Coord) -> f64 {
+        let dx = (a.x - b.x).abs();
+        let dy = (a.y - b.y).abs();
+        let (cardinal, ordinal) = if dx > dy {
+            (dx, dx)
+        } else {
+            (dy, dx)
+        };
 
-    let cardinal: Cost = cardinal * weights.cardinal;
-    let ordinal: Cost = ordinal * weights.ordinal;
+        const SQRT_2_MIN_1: f64 = ::std::f64::consts::SQRT_2 - 1.0;
+        cardinal as f64 + ordinal as f64 * SQRT_2_MIN_1
+    }
 
-    cardinal + ordinal
+    fn jump<G>(_grid: &G, _coord: Coord, _direction: Direction, _goal: Coord) -> Option<(Coord, f64)>
+    where
+        G: CostGrid<Cost = f64>,
+    {
+        unimplemented!()
+    }
+
+    pub fn search_jump_point<G>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        goal: Coord,
+        path: &mut Vec<Direction>
+    ) -> Result<SearchMetadata, Error>
+    where
+        G: CostGrid<Cost = f64>,
+    {
+        let successor_fn = |grid: &G, coord, direction| {
+            Self::jump(grid, coord, direction, goal)
+        };
+        self.search_general(grid, start, goal, Directions, &successor_fn, Self::octile_distance, path)
+    }
 }

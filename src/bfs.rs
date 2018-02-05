@@ -61,10 +61,12 @@ impl BfsContext {
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
     {
+        if let Some(solid) = grid.is_solid(start) {
 
-        if let Some(index) = self.node_grid.coord_to_index(start) {
+            let index = self.node_grid.coord_to_index(start)
+                .expect("BfsContext too small for grid");
 
-            if grid.is_solid(start) {
+            if solid {
                 return Err(Error::StartSolid);
             }
 
@@ -96,24 +98,26 @@ impl BfsContext {
                 let offset: Coord = direction.into();
                 let neighbour_coord = current_coord + offset;
 
-                if let Some(index) = self.node_grid.coord_to_index(neighbour_coord) {
-                    if grid.is_solid(neighbour_coord) {
-                        continue;
-                    }
+                if let Some(false) = grid.is_solid(neighbour_coord) {
+                } else {
+                    continue;
+                }
 
-                    {
-                        let node = &mut self.node_grid[index];
-                        if node.seen != self.seq {
-                            node.seen = self.seq;
-                            node.from_parent = Some(direction);
-                            self.queue.push_back(index);
-                        }
-                    }
+                let index = self.node_grid.coord_to_index(neighbour_coord)
+                    .expect("BfsContext too small for grid");
 
-                    if neighbour_coord == goal {
-                        path::make_path(&self.node_grid, index, path);
-                        return Ok(SearchMetadata { num_nodes_visited });
+                {
+                    let node = &mut self.node_grid[index];
+                    if node.seen != self.seq {
+                        node.seen = self.seq;
+                        node.from_parent = Some(direction);
+                        self.queue.push_back(index);
                     }
+                }
+
+                if neighbour_coord == goal {
+                    path::make_path(&self.node_grid, index, path);
+                    return Ok(SearchMetadata { num_nodes_visited });
                 }
             }
         }

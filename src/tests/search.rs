@@ -23,19 +23,22 @@ impl TestGrid {
 }
 
 impl SolidGrid for TestGrid {
-    fn is_solid(&self, coord: Coord) -> bool {
-        self.grid.get(coord).cloned().unwrap().is_none()
+    fn is_solid(&self, coord: Coord) -> Option<bool> {
+        self.grid.get(coord).map(Option::is_none)
     }
 }
 
 impl CostGrid for TestGrid {
     type Cost = u32;
-    fn cost(&self, coord: Coord, direction: Direction) -> Option<Self::Cost> {
-        let cost = self.grid.get(coord).cloned().unwrap()?;
-        if direction.is_ordinal() {
-            Some(cost * self.ordinal_multiplier)
+    fn cost(&self, coord: Coord, direction: Direction) -> Option<CostCell<Self::Cost>> {
+        if let Some(cost) = self.grid.get(coord).cloned()? {
+            if direction.is_ordinal() {
+                Some(CostCell::Cost(cost * self.ordinal_multiplier))
+            } else {
+                Some(CostCell::Cost(cost))
+            }
         } else {
-            Some(cost)
+            None
         }
     }
 }
@@ -98,7 +101,7 @@ fn common_test(
 
         let (should_be_goal, total_cost) =
             walk.fold((start, 0), |(_, total_cost), (coord, direction)| {
-                if let Some(cost) = grid.cost(coord, direction) {
+                if let CostCell::Cost(cost) = grid.cost(coord, direction).unwrap() {
                     (coord, total_cost + cost)
                 } else {
                     panic!("Path goes through wall");

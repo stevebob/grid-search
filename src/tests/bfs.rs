@@ -40,8 +40,8 @@ fn grid_from_strings(strings: &Vec<&str>) -> (Grid<bool>, Coord, Coord) {
 }
 
 impl SolidGrid for Grid<bool> {
-    fn is_solid(&self, coord: Coord) -> bool {
-        self.get(coord).cloned().unwrap()
+    fn is_solid(&self, coord: Coord) -> Option<bool> {
+        self.get(coord).cloned()
     }
 }
 
@@ -63,7 +63,7 @@ where
     let walk = PathWalk::new(start, &path);
 
     let (should_be_goal, _) = walk.inspect(|&(coord, _)| {
-        assert!(!grid.is_solid(coord));
+        assert_eq!(grid.is_solid(coord), Some(false));
     }).last()
         .unwrap_or((start, Direction::North));
 
