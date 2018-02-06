@@ -63,8 +63,9 @@ impl BfsContext {
     {
         if let Some(solid) = grid.is_solid(start) {
 
-            let index = self.node_grid.coord_to_index(start)
-                .expect("BfsContext too small for grid");
+            let index = self.node_grid.coord_to_index(start).expect(
+                "BfsContext too small for grid",
+            );
 
             if solid {
                 return Err(Error::StartSolid);
@@ -103,8 +104,9 @@ impl BfsContext {
                     continue;
                 }
 
-                let index = self.node_grid.coord_to_index(neighbour_coord)
-                    .expect("BfsContext too small for grid");
+                let index = self.node_grid.coord_to_index(neighbour_coord).expect(
+                    "BfsContext too small for grid",
+                );
 
                 {
                     let node = &mut self.node_grid[index];
