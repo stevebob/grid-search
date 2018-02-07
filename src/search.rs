@@ -102,14 +102,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
     {
-        self.search_general(
-            grid,
-            start,
-            goal,
-            directions,
-            |_, _| Zero::zero(),
-            path,
-        )
+        self.search_general(grid, start, goal, directions, |_, _| Zero::zero(), path)
     }
 
     fn init<G>(
@@ -118,7 +111,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         goal: Coord,
         grid: &G,
         path: &mut Vec<Direction>,
-    ) -> Option<Result<SearchMetadata, Error>>
+    ) -> Result<PriorityEntry<Cost>, Result<SearchMetadata, Error>>
     where
         G: CostGrid<Cost = Cost>,
     {
@@ -129,12 +122,12 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
             );
 
             if solid {
-                return Some(Err(Error::StartSolid));
+                return Err(Err(Error::StartSolid));
             };
 
             if start == goal {
                 path.clear();
-                return Some(Ok(Default::default()));
+                return Err(Ok(Default::default()));
             }
 
             self.seq += 1;
@@ -145,13 +138,10 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
             node.seen = self.seq;
             node.cost = Zero::zero();
 
-            let entry = PriorityEntry::new(index, Zero::zero());
-            self.priority_queue.push(entry);
+            Ok(PriorityEntry::new(index, Zero::zero()))
         } else {
-            return Some(Err(Error::StartOutsideGrid));
-        };
-
-        None
+            Err(Err(Error::StartOutsideGrid))
+        }
     }
 
     fn search_general<G, V, D, H>(
@@ -169,9 +159,12 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         D: Copy + IntoIterator<Item = V>,
         H: Fn(Coord, Coord) -> Cost,
     {
-        if let Some(result) = self.init(start, goal, grid, path) {
-            return result;
-        }
+        let initial_entry = match self.init(start, goal, grid, path) {
+            Ok(initial_entry) => initial_entry,
+            Err(result) => return result,
+        };
+
+        self.priority_queue.push(initial_entry);
 
         let goal_index = self.node_grid.coord_to_index(goal).expect(
             "SearchContext too small for grid",
@@ -199,14 +192,14 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
 
             for d in directions {
                 let direction = d.into();
-                let offset: Coord = direction.into();
-                let neighbour_coord = current_coord + offset;
+                let neighbour_coord = current_coord + direction.coord();
 
-                let neighbour_cost = if let Some(CostCell::Cost(cost)) = grid.cost(neighbour_coord, direction) {
-                    cost
-                } else {
-                    continue;
-                };
+                let neighbour_cost =
+                    if let Some(CostCell::Cost(cost)) = grid.cost(neighbour_coord, direction) {
+                        cost
+                    } else {
+                        continue;
+                    };
 
                 let index = self.node_grid.coord_to_index(neighbour_coord).expect(
                     "SearchContext too small for grid",
@@ -216,8 +209,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
 
                 Self::update_node_and_priority_queue(
                     index,
-                    current_cost,
-                    neighbour_cost,
+                    current_cost + neighbour_cost,
                     neighbour_coord,
                     direction,
                     self.seq,
@@ -234,20 +226,17 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
 
     fn update_node_and_priority_queue<H>(
         index: usize,
-        current_cost: Cost,
-        neighbour_cost: Cost,
+        cost: Cost,
         neighbour_coord: Coord,
         direction: Direction,
         seq: u64,
         heuristic_fn: H,
         goal: Coord,
         neighbour_node: &mut SearchNode<Cost>,
-        priority_queue: &mut BinaryHeap<PriorityEntry<Cost>>)
-    where
+        priority_queue: &mut BinaryHeap<PriorityEntry<Cost>>,
+    ) where
         H: Fn(Coord, Coord) -> Cost,
     {
-        let cost = current_cost + neighbour_cost;
-
         if neighbour_node.seen != seq || neighbour_node.cost > cost {
             neighbour_node.from_parent = Some(direction);
             neighbour_node.seen = seq;
@@ -279,14 +268,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> SearchContext<C
         let heuristic_fn =
             |a, b| NumCast::from(Self::manhatten_distance(a, b)).expect("Failed to cast to Cost");
 
-        self.search_general(
-            grid,
-            start,
-            goal,
-            DirectionsCardinal,
-            heuristic_fn,
-            path,
-        )
+        self.search_general(grid, start, goal, DirectionsCardinal, heuristic_fn, path)
     }
 }
 
@@ -342,14 +324,7 @@ where
         G: CostGrid<Cost = Cost>,
     {
         let heuristic_fn = |a, b| Self::diagonal_distance(a, b, &weights);
-        self.search_general(
-            grid,
-            start,
-            goal,
-            Directions,
-            heuristic_fn,
-            path,
-        )
+        self.search_general(grid, start, goal, Directions, heuristic_fn, path)
     }
 }
 
@@ -363,16 +338,236 @@ impl SearchContext<f64> {
         cardinal as f64 + ordinal as f64 * SQRT_2_MIN_1
     }
 
-    fn jump<G>(
+    fn has_forced_neighbour_cardinal<G>(grid: &G, coord: Coord, direction: CardinalDirection) -> bool
+    where
+        G: CostGrid<Cost = f64>,
+    {
+        if let Some(true) = grid.is_solid(coord + direction.left90().coord()) {
+            return true;
+        }
+
+        if let Some(true) = grid.is_solid(coord + direction.right90().coord()) {
+            return true;
+        }
+
+        false
+    }
+
+    fn has_forced_neighbour_ordinal<G>(grid: &G, coord: Coord, direction: OrdinalDirection) -> bool
+    where
+        G: CostGrid<Cost = f64>,
+    {
+        let (left, right) = direction.opposite().to_cardinals();
+
+        if let Some(true) = grid.is_solid(coord + left.coord()) {
+            return true;
+        }
+
+        if let Some(true) = grid.is_solid(coord + right.coord()) {
+            return true;
+        }
+
+        false
+    }
+
+    fn jump_cardinal<G>(
         grid: &G,
         coord: Coord,
-        direction: Direction,
+        direction: CardinalDirection,
         goal: Coord,
     ) -> Option<(Coord, f64)>
     where
         G: CostGrid<Cost = f64>,
     {
-        unimplemented!()
+        let neighbour_coord = coord + direction.coord();
+
+        let neighbour_cost = if let Some(CostCell::Cost(cost)) = grid.cost(neighbour_coord, direction.direction()) {
+            cost
+        } else {
+            return None;
+        };
+
+        if neighbour_coord == goal {
+            return Some((neighbour_coord, neighbour_cost));
+        }
+
+        if Self::has_forced_neighbour_cardinal(grid, neighbour_coord, direction) {
+            return Some((neighbour_coord, neighbour_cost));
+        }
+
+        Self::jump_cardinal(grid, neighbour_coord, direction, goal)
+            .map(|(coord, cost)| (coord, cost + neighbour_cost))
+    }
+
+    fn jump_ordinal<G>(
+        grid: &G,
+        coord: Coord,
+        direction: OrdinalDirection,
+        goal: Coord,
+    ) -> Option<(Coord, f64)>
+    where
+        G: CostGrid<Cost = f64>,
+    {
+        let neighbour_coord = coord + direction.coord();
+
+        let neighbour_cost = if let Some(CostCell::Cost(cost)) = grid.cost(neighbour_coord, direction.direction()) {
+            cost
+        } else {
+            return None;
+        };
+
+        if neighbour_coord == goal {
+            return Some((neighbour_coord, neighbour_cost));
+        }
+
+        if Self::has_forced_neighbour_ordinal(grid, neighbour_coord, direction) {
+            return Some((neighbour_coord, neighbour_cost));
+        }
+
+        let (card0, card1) = direction.to_cardinals();
+
+        if Self::jump_cardinal(grid, neighbour_coord, card0, goal).is_some() ||
+            Self::jump_cardinal(grid, neighbour_coord, card1, goal).is_some()
+        {
+            return Some((neighbour_coord, neighbour_cost));
+        }
+
+        Self::jump_ordinal(grid, neighbour_coord, direction, goal)
+            .map(|(coord, cost)| (coord, cost + neighbour_cost))
+    }
+
+
+    fn expand_common<H>(
+        successor_coord: Coord,
+        cost: f64,
+        direction: Direction,
+        goal: Coord,
+        heuristic_fn: H,
+        seq: u64,
+        node_grid: &mut Grid<SearchNode<f64>>,
+        priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
+    ) where
+        H: Fn(Coord, Coord) -> f64,
+    {
+        let index = node_grid.coord_to_index(successor_coord).expect(
+            "SearchContext too small for grid",
+        );
+
+        let node = &mut node_grid[index];
+
+        Self::update_node_and_priority_queue(
+            index,
+            cost,
+            successor_coord,
+            direction,
+            seq,
+            heuristic_fn,
+            goal,
+            node,
+            priority_queue,
+        );
+    }
+
+    fn expand_cardinal<G, H>(
+        grid: &G,
+        current_coord: Coord,
+        current_cost: f64,
+        direction: CardinalDirection,
+        goal: Coord,
+        heuristic_fn: H,
+        seq: u64,
+        node_grid: &mut Grid<SearchNode<f64>>,
+        priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
+    ) where
+        G: CostGrid<Cost = f64>,
+        H: Fn(Coord, Coord) -> f64,
+    {
+        if let Some((successor_coord, successor_cost)) =
+            Self::jump_cardinal(grid, current_coord, direction, goal)
+        {
+            Self::expand_common(
+                successor_coord,
+                current_cost + successor_cost,
+                direction.direction(),
+                goal,
+                heuristic_fn,
+                seq,
+                node_grid,
+                priority_queue,
+            );
+        }
+    }
+
+    fn expand_ordinal<G, H>(
+        grid: &G,
+        current_coord: Coord,
+        current_cost: f64,
+        direction: OrdinalDirection,
+        goal: Coord,
+        heuristic_fn: H,
+        seq: u64,
+        node_grid: &mut Grid<SearchNode<f64>>,
+        priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
+    ) where
+        G: CostGrid<Cost = f64>,
+        H: Fn(Coord, Coord) -> f64,
+    {
+        if let Some((successor_coord, successor_cost)) =
+            Self::jump_ordinal(grid, current_coord, direction, goal)
+        {
+            Self::expand_common(
+                successor_coord,
+                current_cost + successor_cost,
+                direction.direction(),
+                goal,
+                heuristic_fn,
+                seq,
+                node_grid,
+                priority_queue,
+            );
+        }
+    }
+
+    fn expand_general<G, H>(
+        grid: &G,
+        current_coord: Coord,
+        current_cost: f64,
+        direction: Direction,
+        goal: Coord,
+        heuristic_fn: H,
+        seq: u64,
+        node_grid: &mut Grid<SearchNode<f64>>,
+        priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
+    ) where
+        G: CostGrid<Cost = f64>,
+        H: Fn(Coord, Coord) -> f64,
+    {
+        match direction.typ() {
+            DirectionType::Cardinal(direction) =>
+                Self::expand_cardinal(
+                    grid,
+                    current_coord,
+                    current_cost,
+                    direction,
+                    goal,
+                    heuristic_fn,
+                    seq,
+                    node_grid,
+                    priority_queue,
+                ),
+            DirectionType::Ordinal(direction) =>
+                Self::expand_ordinal(
+                    grid,
+                    current_coord,
+                    current_cost,
+                    direction,
+                    goal,
+                    heuristic_fn,
+                    seq,
+                    node_grid,
+                    priority_queue,
+                ),
+        }
     }
 
     pub fn search_jump_point<G>(
@@ -385,13 +580,28 @@ impl SearchContext<f64> {
     where
         G: CostGrid<Cost = f64>,
     {
-        if let Some(result) = self.init(start, goal, grid, path) {
-            return result;
-        }
+        let initial_entry = match self.init(start, goal, grid, path) {
+            Ok(initial_entry) => initial_entry,
+            Err(result) => return result,
+        };
 
         let goal_index = self.node_grid.coord_to_index(goal).expect(
             "SearchContext too small for grid",
         );
+
+        for direction in Directions {
+            Self::expand_general(
+                grid,
+                start,
+                initial_entry.cost,
+                direction,
+                goal,
+                Self::octile_distance,
+                self.seq,
+                &mut self.node_grid,
+                &mut self.priority_queue,
+            );
+        }
 
         let mut num_nodes_visited = 0;
 
@@ -404,7 +614,7 @@ impl SearchContext<f64> {
                 return Ok(SearchMetadata { num_nodes_visited });
             }
 
-            let (current_coord, current_cost) = {
+            let (_current_coord, _current_cost) = {
                 let node = &mut self.node_grid[current_entry.node_index];
                 if node.visited == self.seq {
                     continue;

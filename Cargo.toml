@@ -10,6 +10,6 @@ repository = "https://github.com/stevebob/grid-search.git"
 documentation = "https://docs.rs/grid_search"
 
 [dependencies]
-direction = "0.4"
+direction = "0.6"
 grid_2d = "0.1"
 num-traits = "0.1"
