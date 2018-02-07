@@ -614,16 +614,124 @@ impl SearchContext<f64> {
                 return Ok(SearchMetadata { num_nodes_visited });
             }
 
-            let (_current_coord, _current_cost) = {
+            let (current_coord, current_cost, direction) = {
                 let node = &mut self.node_grid[current_entry.node_index];
                 if node.visited == self.seq {
                     continue;
                 }
                 node.visited = self.seq;
-                (node.coord, node.cost)
+                let direction = node.from_parent.expect("Open set node without direction");
+                (node.coord, node.cost, direction)
             };
 
-            // TODO
+            match direction.typ() {
+                DirectionType::Cardinal(direction) => {
+                    Self::expand_cardinal(
+                        grid,
+                        current_coord,
+                        current_cost,
+                        direction,
+                        goal,
+                        Self::octile_distance,
+                        self.seq,
+                        &mut self.node_grid,
+                        &mut self.priority_queue,
+                    );
+                    let left = direction.left90();
+                    if let Some(true) = grid.is_solid(current_coord + left.coord()) {
+                        Self::expand_ordinal(
+                            grid,
+                            current_coord,
+                            current_cost,
+                            OrdinalDirection::from_cardinals(direction, left).unwrap(),
+                            goal,
+                            Self::octile_distance,
+                            self.seq,
+                            &mut self.node_grid,
+                            &mut self.priority_queue,
+                        );
+                    }
+                    let right = direction.right90();
+                    if let Some(true) = grid.is_solid(current_coord + right.coord()) {
+                        Self::expand_ordinal(
+                            grid,
+                            current_coord,
+                            current_cost,
+                            OrdinalDirection::from_cardinals(direction, right).unwrap(),
+                            goal,
+                            Self::octile_distance,
+                            self.seq,
+                            &mut self.node_grid,
+                            &mut self.priority_queue,
+                        );
+                    }
+                }
+                DirectionType::Ordinal(direction) => {
+                    Self::expand_ordinal(
+                        grid,
+                        current_coord,
+                        current_cost,
+                        direction,
+                        goal,
+                        Self::octile_distance,
+                        self.seq,
+                        &mut self.node_grid,
+                        &mut self.priority_queue,
+                    );
+                    let (left, right) = direction.to_cardinals();
+                    Self::expand_cardinal(
+                        grid,
+                        current_coord,
+                        current_cost,
+                        left,
+                        goal,
+                        Self::octile_distance,
+                        self.seq,
+                        &mut self.node_grid,
+                        &mut self.priority_queue,
+                    );
+                    Self::expand_cardinal(
+                        grid,
+                        current_coord,
+                        current_cost,
+                        right,
+                        goal,
+                        Self::octile_distance,
+                        self.seq,
+                        &mut self.node_grid,
+                        &mut self.priority_queue,
+                    );
+
+                    let (check_right, check_left) = direction.opposite().to_cardinals();
+
+                    if let Some(true) = grid.is_solid(current_coord + check_left.coord()) {
+                        Self::expand_ordinal(
+                            grid,
+                            current_coord,
+                            current_cost,
+                            direction.left90(),
+                            goal,
+                            Self::octile_distance,
+                            self.seq,
+                            &mut self.node_grid,
+                            &mut self.priority_queue,
+                        );
+                    }
+                    if let Some(true) = grid.is_solid(current_coord + check_right.coord()) {
+                        Self::expand_ordinal(
+                            grid,
+                            current_coord,
+                            current_cost,
+                            direction.right90(),
+                            goal,
+                            Self::octile_distance,
+                            self.seq,
+                            &mut self.node_grid,
+                            &mut self.priority_queue,
+                        );
+                    }
+                }
+            }
         }
 
         Err(Error::NoPath)

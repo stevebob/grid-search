@@ -43,6 +43,35 @@ impl CostGrid for TestGrid {
     }
 }
 
+struct FloatGrid(TestGrid);
+
+impl FloatGrid {
+    fn width(&self) -> u32 {
+        self.0.width()
+    }
+    fn height(&self) -> u32 {
+        self.0.height()
+    }
+}
+
+impl SolidGrid for FloatGrid {
+    fn is_solid(&self, coord: Coord) -> Option<bool> {
+        self.0.is_solid(coord)
+    }
+}
+
+impl CostGrid for FloatGrid {
+    type Cost = f64;
+    fn cost(&self, coord: Coord, direction: Direction) -> Option<CostCell<Self::Cost>> {
+        self.0.cost(coord, direction).map(|c| match c {
+            CostCell::Solid => CostCell::Solid,
+            CostCell::Cost(cost) => CostCell::Cost(cost as f64),
+        })
+    }
+}
+
+
+
 fn grid_from_strings(strings: &Vec<&str>, ordinal_multiplier: u32) -> (TestGrid, Coord, Coord) {
     let width = strings[0].len() as u32;
     let height = strings.len() as u32;
@@ -328,3 +357,29 @@ fn simple_optimality() {
     common_test(&strings, 20, false, 2, 2);
     common_test(&strings, 1, false, 1, 1);
 }
+
+#[test]
+fn jps() {
+    let strings = vec![
+        "..........",
+        "....#.....",
+        "....#.....",
+        "....#.....",
+        ".s..#.....",
+        "....#...g.",
+        "....#.....",
+        "..........",
+        "..........",
+        "..........",
+    ];
+
+    let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
+
+    let grid = FloatGrid(grid);
+
+    let mut ctx = SearchContext::new(grid.width(), grid.height());
+    let mut path = Vec::new();
+    let _result = ctx.search_jump_point(&grid, start, goal, &mut path);
+}
+
+
