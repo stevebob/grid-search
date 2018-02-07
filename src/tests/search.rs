@@ -381,5 +381,3 @@ fn jps() {
     let mut path = Vec::new();
     let _result = ctx.search_jump_point(&grid, start, goal, &mut path);
 }
-
-

@@ -3,6 +3,9 @@ use direction::Direction;
 
 pub trait SolidGrid {
     fn is_solid(&self, coord: Coord) -> Option<bool>;
+    fn is_solid_or_outside(&self, coord: Coord) -> bool {
+        self.is_solid(coord).unwrap_or(true)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

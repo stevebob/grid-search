@@ -80,6 +80,7 @@ pub struct SearchContext<Cost: Add<Cost> + PartialOrd<Cost>> {
     node_grid: Grid<SearchNode<Cost>>,
 }
 
+
 impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
@@ -113,7 +114,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         path: &mut Vec<Direction>,
     ) -> Result<PriorityEntry<Cost>, Result<SearchMetadata, Error>>
     where
-        G: CostGrid<Cost = Cost>,
+        G: SolidGrid,
     {
         if let Some(solid) = grid.is_solid(start) {
 
@@ -338,15 +339,19 @@ impl SearchContext<f64> {
         cardinal as f64 + ordinal as f64 * SQRT_2_MIN_1
     }
 
-    fn has_forced_neighbour_cardinal<G>(grid: &G, coord: Coord, direction: CardinalDirection) -> bool
+    fn has_forced_neighbour_cardinal<G>(
+        grid: &G,
+        coord: Coord,
+        direction: CardinalDirection,
+    ) -> bool
     where
-        G: CostGrid<Cost = f64>,
+        G: SolidGrid,
     {
-        if let Some(true) = grid.is_solid(coord + direction.left90().coord()) {
+        if grid.is_solid_or_outside(coord + direction.left90().coord()) {
             return true;
         }
 
-        if let Some(true) = grid.is_solid(coord + direction.right90().coord()) {
+        if grid.is_solid_or_outside(coord + direction.right90().coord()) {
             return true;
         }
 
@@ -355,15 +360,15 @@ impl SearchContext<f64> {
 
     fn has_forced_neighbour_ordinal<G>(grid: &G, coord: Coord, direction: OrdinalDirection) -> bool
     where
-        G: CostGrid<Cost = f64>,
+        G: SolidGrid,
     {
         let (left, right) = direction.opposite().to_cardinals();
 
-        if let Some(true) = grid.is_solid(coord + left.coord()) {
+        if grid.is_solid_or_outside(coord + left.coord()) {
             return true;
         }
 
-        if let Some(true) = grid.is_solid(coord + right.coord()) {
+        if grid.is_solid_or_outside(coord + right.coord()) {
             return true;
         }
 
@@ -377,26 +382,26 @@ impl SearchContext<f64> {
         goal: Coord,
     ) -> Option<(Coord, f64)>
     where
-        G: CostGrid<Cost = f64>,
+        G: SolidGrid,
     {
         let neighbour_coord = coord + direction.coord();
 
-        let neighbour_cost = if let Some(CostCell::Cost(cost)) = grid.cost(neighbour_coord, direction.direction()) {
-            cost
-        } else {
+        if grid.is_solid_or_outside(neighbour_coord) {
             return None;
-        };
+        }
+
+        const COST: f64 = 1.0;
 
         if neighbour_coord == goal {
-            return Some((neighbour_coord, neighbour_cost));
+            return Some((neighbour_coord, COST));
         }
 
         if Self::has_forced_neighbour_cardinal(grid, neighbour_coord, direction) {
-            return Some((neighbour_coord, neighbour_cost));
+            return Some((neighbour_coord, COST));
         }
 
         Self::jump_cardinal(grid, neighbour_coord, direction, goal)
-            .map(|(coord, cost)| (coord, cost + neighbour_cost))
+            .map(|(coord, cost)| (coord, cost + COST))
     }
 
     fn jump_ordinal<G>(
@@ -406,22 +411,22 @@ impl SearchContext<f64> {
         goal: Coord,
     ) -> Option<(Coord, f64)>
     where
-        G: CostGrid<Cost = f64>,
+        G: SolidGrid,
     {
         let neighbour_coord = coord + direction.coord();
 
-        let neighbour_cost = if let Some(CostCell::Cost(cost)) = grid.cost(neighbour_coord, direction.direction()) {
-            cost
-        } else {
+        if grid.is_solid_or_outside(neighbour_coord) {
             return None;
-        };
+        }
+
+        const COST: f64 = ::std::f64::consts::SQRT_2;
 
         if neighbour_coord == goal {
-            return Some((neighbour_coord, neighbour_cost));
+            return Some((neighbour_coord, COST));
         }
 
         if Self::has_forced_neighbour_ordinal(grid, neighbour_coord, direction) {
-            return Some((neighbour_coord, neighbour_cost));
+            return Some((neighbour_coord, COST));
         }
 
         let (card0, card1) = direction.to_cardinals();
@@ -429,26 +434,22 @@ impl SearchContext<f64> {
         if Self::jump_cardinal(grid, neighbour_coord, card0, goal).is_some() ||
             Self::jump_cardinal(grid, neighbour_coord, card1, goal).is_some()
         {
-            return Some((neighbour_coord, neighbour_cost));
+            return Some((neighbour_coord, COST));
         }
 
         Self::jump_ordinal(grid, neighbour_coord, direction, goal)
-            .map(|(coord, cost)| (coord, cost + neighbour_cost))
+            .map(|(coord, cost)| (coord, cost + COST))
     }
 
-
-    fn expand_common<H>(
+    fn expand_common(
         successor_coord: Coord,
         cost: f64,
         direction: Direction,
         goal: Coord,
-        heuristic_fn: H,
         seq: u64,
         node_grid: &mut Grid<SearchNode<f64>>,
         priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
-    ) where
-        H: Fn(Coord, Coord) -> f64,
-    {
+    ) {
         let index = node_grid.coord_to_index(successor_coord).expect(
             "SearchContext too small for grid",
         );
@@ -461,26 +462,24 @@ impl SearchContext<f64> {
             successor_coord,
             direction,
             seq,
-            heuristic_fn,
+            Self::octile_distance,
             goal,
             node,
             priority_queue,
         );
     }
 
-    fn expand_cardinal<G, H>(
+    fn expand_cardinal<G>(
         grid: &G,
         current_coord: Coord,
         current_cost: f64,
         direction: CardinalDirection,
         goal: Coord,
-        heuristic_fn: H,
         seq: u64,
         node_grid: &mut Grid<SearchNode<f64>>,
         priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
     ) where
-        G: CostGrid<Cost = f64>,
-        H: Fn(Coord, Coord) -> f64,
+        G: SolidGrid,
     {
         if let Some((successor_coord, successor_cost)) =
             Self::jump_cardinal(grid, current_coord, direction, goal)
@@ -490,7 +489,6 @@ impl SearchContext<f64> {
                 current_cost + successor_cost,
                 direction.direction(),
                 goal,
-                heuristic_fn,
                 seq,
                 node_grid,
                 priority_queue,
@@ -498,19 +496,17 @@ impl SearchContext<f64> {
         }
     }
 
-    fn expand_ordinal<G, H>(
+    fn expand_ordinal<G>(
         grid: &G,
         current_coord: Coord,
         current_cost: f64,
         direction: OrdinalDirection,
         goal: Coord,
-        heuristic_fn: H,
         seq: u64,
         node_grid: &mut Grid<SearchNode<f64>>,
         priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
     ) where
-        G: CostGrid<Cost = f64>,
-        H: Fn(Coord, Coord) -> f64,
+        G: SolidGrid,
     {
         if let Some((successor_coord, successor_cost)) =
             Self::jump_ordinal(grid, current_coord, direction, goal)
@@ -520,7 +516,6 @@ impl SearchContext<f64> {
                 current_cost + successor_cost,
                 direction.direction(),
                 goal,
-                heuristic_fn,
                 seq,
                 node_grid,
                 priority_queue,
@@ -528,45 +523,43 @@ impl SearchContext<f64> {
         }
     }
 
-    fn expand_general<G, H>(
+    fn expand_general<G>(
         grid: &G,
         current_coord: Coord,
         current_cost: f64,
         direction: Direction,
         goal: Coord,
-        heuristic_fn: H,
         seq: u64,
         node_grid: &mut Grid<SearchNode<f64>>,
         priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
     ) where
-        G: CostGrid<Cost = f64>,
-        H: Fn(Coord, Coord) -> f64,
+        G: SolidGrid,
     {
         match direction.typ() {
-            DirectionType::Cardinal(direction) =>
+            DirectionType::Cardinal(direction) => {
                 Self::expand_cardinal(
                     grid,
                     current_coord,
                     current_cost,
                     direction,
                     goal,
-                    heuristic_fn,
                     seq,
                     node_grid,
                     priority_queue,
-                ),
-            DirectionType::Ordinal(direction) =>
+                )
+            }
+            DirectionType::Ordinal(direction) => {
                 Self::expand_ordinal(
                     grid,
                     current_coord,
                     current_cost,
                     direction,
                     goal,
-                    heuristic_fn,
                     seq,
                     node_grid,
                     priority_queue,
-                ),
+                )
+            }
         }
     }
 
@@ -578,7 +571,7 @@ impl SearchContext<f64> {
         path: &mut Vec<Direction>,
     ) -> Result<SearchMetadata, Error>
     where
-        G: CostGrid<Cost = f64>,
+        G: SolidGrid,
     {
         let initial_entry = match self.init(start, goal, grid, path) {
             Ok(initial_entry) => initial_entry,
@@ -596,7 +589,6 @@ impl SearchContext<f64> {
                 initial_entry.cost,
                 direction,
                 goal,
-                Self::octile_distance,
                 self.seq,
                 &mut self.node_grid,
                 &mut self.priority_queue,
@@ -632,34 +624,31 @@ impl SearchContext<f64> {
                         current_cost,
                         direction,
                         goal,
-                        Self::octile_distance,
                         self.seq,
                         &mut self.node_grid,
                         &mut self.priority_queue,
                     );
                     let left = direction.left90();
-                    if let Some(true) = grid.is_solid(current_coord + left.coord()) {
+                    if grid.is_solid_or_outside(current_coord + left.coord()) {
                         Self::expand_ordinal(
                             grid,
                             current_coord,
                             current_cost,
                             OrdinalDirection::from_cardinals(direction, left).unwrap(),
                             goal,
-                            Self::octile_distance,
                             self.seq,
                             &mut self.node_grid,
                             &mut self.priority_queue,
                         );
                     }
                     let right = direction.right90();
-                    if let Some(true) = grid.is_solid(current_coord + right.coord()) {
+                    if grid.is_solid_or_outside(current_coord + right.coord()) {
                         Self::expand_ordinal(
                             grid,
                             current_coord,
                             current_cost,
                             OrdinalDirection::from_cardinals(direction, right).unwrap(),
                             goal,
-                            Self::octile_distance,
                             self.seq,
                             &mut self.node_grid,
                             &mut self.priority_queue,
@@ -673,7 +662,6 @@ impl SearchContext<f64> {
                         current_cost,
                         direction,
                         goal,
-                        Self::octile_distance,
                         self.seq,
                         &mut self.node_grid,
                         &mut self.priority_queue,
@@ -685,7 +673,6 @@ impl SearchContext<f64> {
                         current_cost,
                         left,
                         goal,
-                        Self::octile_distance,
                         self.seq,
                         &mut self.node_grid,
                         &mut self.priority_queue,
@@ -696,7 +683,6 @@ impl SearchContext<f64> {
                         current_cost,
                         right,
                         goal,
-                        Self::octile_distance,
                         self.seq,
                         &mut self.node_grid,
                         &mut self.priority_queue,
@@ -704,27 +690,25 @@ impl SearchContext<f64> {
 
                     let (check_right, check_left) = direction.opposite().to_cardinals();
 
-                    if let Some(true) = grid.is_solid(current_coord + check_left.coord()) {
+                    if grid.is_solid_or_outside(current_coord + check_left.coord()) {
                         Self::expand_ordinal(
                             grid,
                             current_coord,
                             current_cost,
                             direction.left90(),
                             goal,
-                            Self::octile_distance,
                             self.seq,
                             &mut self.node_grid,
                             &mut self.priority_queue,
                         );
                     }
-                    if let Some(true) = grid.is_solid(current_coord + check_right.coord()) {
+                    if grid.is_solid_or_outside(current_coord + check_right.coord()) {
                         Self::expand_ordinal(
                             grid,
                             current_coord,
                             current_cost,
                             direction.right90(),
                             goal,
-                            Self::octile_distance,
                             self.seq,
                             &mut self.node_grid,
                             &mut self.priority_queue,
