@@ -210,7 +210,7 @@ impl SearchContext<f64> {
         }
     }
 
-    pub fn search_jump_point<G>(
+    pub fn jump_point_search<G>(
         &mut self,
         grid: &G,
         start: Coord,

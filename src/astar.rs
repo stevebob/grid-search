@@ -37,7 +37,7 @@ fn diagonal_distance<Cost>(a: Coord, b: Coord, weights: &HeuristicDirectionWeigh
 }
 
 impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> SearchContext<Cost> {
-    pub fn search_cardinal_manhatten_distance_heuristic<G>(
+    pub fn astar_cardinal_manhatten_distance_heuristic<G>(
         &mut self,
         grid: &G,
         start: Coord,
@@ -47,7 +47,6 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> SearchContext<C
     where
         G: CostGrid<Cost = Cost>,
     {
-
         let heuristic_fn =
             |a, b| NumCast::from(manhatten_distance(a, b)).expect("Failed to cast to Cost");
 
@@ -56,12 +55,12 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> SearchContext<C
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct HeuristicDirectionWeights<Cost: Add<Cost> + PartialOrd<Cost>> {
+pub struct HeuristicDirectionWeights<Cost> {
     pub cardinal: Cost,
     pub ordinal: Cost,
 }
 
-impl<Cost: Add<Cost> + PartialOrd<Cost> + Zero> HeuristicDirectionWeights<Cost> {
+impl<Cost> HeuristicDirectionWeights<Cost> {
     pub fn new(cardinal: Cost, ordinal: Cost) -> Self {
         Self { cardinal, ordinal }
     }
@@ -76,7 +75,7 @@ where
         + NumCast
         + Zero,
 {
-    pub fn search_diagonal_distance_heuristic<G>(
+    pub fn astar_diagonal_distance_heuristic<G>(
         &mut self,
         grid: &G,
         start: Coord,

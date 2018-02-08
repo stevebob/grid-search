@@ -48,7 +48,7 @@ impl BfsContext {
         }
     }
 
-    pub fn search<G, V, D>(
+    pub fn bfs<G, V, D>(
         &mut self,
         grid: &G,
         start: Coord,

@@ -74,14 +74,13 @@ impl<Cost: PartialOrd<Cost>> Ord for PriorityEntry<Cost> {
 }
 
 #[derive(Debug, Clone)]
-pub struct SearchContext<Cost: Add<Cost> + PartialOrd<Cost>> {
+pub struct SearchContext<Cost: PartialOrd<Cost>> {
     pub(crate) seq: u64,
     pub(crate) priority_queue: BinaryHeap<PriorityEntry<Cost>>,
     pub(crate) node_grid: Grid<SearchNode<Cost>>,
 }
 
-
-impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
+impl<Cost: PartialOrd<Cost> + Zero> SearchContext<Cost> {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             seq: 0,
@@ -89,7 +88,9 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
             priority_queue: BinaryHeap::new(),
         }
     }
+}
 
+impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
     pub(crate) fn init<G>(
         &mut self,
         start: Coord,

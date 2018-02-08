@@ -8,7 +8,7 @@ use metadata::*;
 use search::*;
 
 impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
-    pub fn search<G, V, D>(
+    pub fn dijkstra<G, V, D>(
         &mut self,
         grid: &G,
         start: Coord,

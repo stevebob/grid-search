@@ -53,7 +53,7 @@ where
     let (grid, start, goal) = grid_from_strings(strings);
     let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    let metadata = ctx.search(&grid, start, goal, directions, &mut path)
+    let metadata = ctx.bfs(&grid, start, goal, directions, &mut path)
         .unwrap();
 
     println!("{:?}", metadata);
@@ -106,7 +106,7 @@ fn no_path() {
     let (grid, start, goal) = grid_from_strings(&strings);
     let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    let result = ctx.search(&grid, start, goal, Directions, &mut path);
+    let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
 
     assert_eq!(result, Err(Error::NoPath));
 }
@@ -142,7 +142,7 @@ fn goal_is_solid() {
     let (grid, start, goal) = grid_from_strings(&strings);
     let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    let result = ctx.search(&grid, start, goal, Directions, &mut path);
+    let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
 
     assert_eq!(result, Err(Error::NoPath));
 }
@@ -166,7 +166,7 @@ fn start_is_solid() {
     let (grid, start, goal) = grid_from_strings(&strings);
     let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    let result = ctx.search(&grid, start, goal, Directions, &mut path);
+    let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
 
     assert_eq!(result, Err(Error::StartSolid));
 }
@@ -192,7 +192,7 @@ fn start_outside_grid() {
 
     let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    let result = ctx.search(&grid, start, goal, Directions, &mut path);
+    let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
 
     assert_eq!(result, Err(Error::StartOutsideGrid));
 }
