@@ -6,7 +6,7 @@ use error::*;
 use metadata::*;
 use path::{self, PathNode};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 struct BfsNode {
     seen: u64,
     coord: Coord,
@@ -32,7 +32,7 @@ impl From<Coord> for BfsNode {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BfsContext {
     seq: u64,
     queue: VecDeque<usize>,

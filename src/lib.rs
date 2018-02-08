@@ -1,6 +1,8 @@
 extern crate direction;
 extern crate grid_2d;
 extern crate num_traits;
+extern crate serde;
+#[macro_use] extern crate serde_derive;
 
 mod bfs;
 mod search;

@@ -50,7 +50,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> SearchContext<C
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct HeuristicDirectionWeights<Cost> {
     pub cardinal: Cost,
     pub ordinal: Cost,

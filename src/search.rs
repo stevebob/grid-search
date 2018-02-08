@@ -9,7 +9,7 @@ use error::*;
 use metadata::*;
 use path::{self, PathNode};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub(crate) struct SearchNode<Cost> {
     pub(crate) seen: u64,
     pub(crate) visited: u64,
@@ -39,7 +39,7 @@ impl<Cost> PathNode for SearchNode<Cost> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct PriorityEntry<Cost: PartialOrd<Cost>> {
     pub(crate) node_index: usize,
     pub(crate) cost: Cost,
@@ -74,7 +74,7 @@ impl<Cost: PartialOrd<Cost>> Ord for PriorityEntry<Cost> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchContext<Cost: PartialOrd<Cost>> {
     pub(crate) seq: u64,
     pub(crate) priority_queue: BinaryHeap<PriorityEntry<Cost>>,
