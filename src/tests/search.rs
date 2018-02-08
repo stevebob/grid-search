@@ -170,14 +170,12 @@ fn common_test(
         let with_heuristic = check_result(&path, metadata);
 
         let jps = if grid_weights == Uniform {
-            let metadata = ctx
-                .jump_point_search_cardinal_manhatten_distance_heuristic(
-                    &grid,
-                    start,
-                    goal,
-                    &mut path,
-                )
-                .unwrap();
+            let metadata = ctx.jump_point_search_cardinal_manhatten_distance_heuristic(
+                &grid,
+                start,
+                goal,
+                &mut path,
+            ).unwrap();
             Some(check_result(&path, metadata))
         } else {
             None
