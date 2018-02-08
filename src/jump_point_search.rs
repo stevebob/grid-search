@@ -210,7 +210,7 @@ impl SearchContext<f64> {
         }
     }
 
-    pub fn jump_point_search<G>(
+    pub fn jump_point_search_octile_distance_heuristic<G>(
         &mut self,
         grid: &G,
         start: Coord,

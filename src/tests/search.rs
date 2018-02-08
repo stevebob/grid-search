@@ -380,6 +380,6 @@ fn jps() {
 
     let mut ctx = SearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    ctx.jump_point_search(&grid, start, goal, &mut path).unwrap();
+    ctx.jump_point_search_octile_distance_heuristic(&grid, start, goal, &mut path).unwrap();
     assert_eq!(path.len(), 7);
 }
