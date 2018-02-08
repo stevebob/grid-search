@@ -234,6 +234,24 @@ fn uniform_wall() {
 }
 
 #[test]
+fn uniform_corridors() {
+    let strings = vec![
+        "#####.####",
+        "#........#",
+        "###.#.##.#",
+        "###.#.##.#",
+        "#s#.#..###",
+        "#.#.#.##g#",
+        "#.#.#.##.#",
+        "#...#....#",
+        "##.####.##",
+        ".####.####",
+    ];
+    common_test(&strings, 1, Cardinal, Uniform, 24, 24);
+    common_test(&strings, 1, All, Uniform, 18, 18);
+}
+
+#[test]
 fn non_uniform_wall() {
     let strings = vec![
         "....,.....",
