@@ -3,6 +3,7 @@ use grid_2d::*;
 use grid::*;
 use path::PathWalk;
 use search::*;
+use astar::*;
 use error::*;
 use metadata::*;
 

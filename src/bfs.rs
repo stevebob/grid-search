@@ -118,7 +118,7 @@ impl BfsContext {
                 }
 
                 if neighbour_coord == goal {
-                    path::make_path(&self.node_grid, index, path);
+                    path::make_path_all_adjacent(&self.node_grid, index, path);
                     return Ok(SearchMetadata { num_nodes_visited });
                 }
             }

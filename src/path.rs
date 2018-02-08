@@ -1,13 +1,14 @@
 use std::slice;
 use direction::Direction;
 use grid_2d::*;
+use search::*;
 
 pub(crate) trait PathNode {
     fn from_parent(&self) -> Option<Direction>;
     fn coord(&self) -> Coord;
 }
 
-pub(crate) fn make_path<N: PathNode>(
+pub(crate) fn make_path_all_adjacent<N: PathNode>(
     node_grid: &Grid<N>,
     goal_index: usize,
     path: &mut Vec<Direction>,
@@ -21,6 +22,42 @@ pub(crate) fn make_path<N: PathNode>(
             .coord_to_index(node_grid[index].coord() + offset)
             .expect("Invalid search state");
     }
+    path.reverse();
+}
+
+pub(crate) fn make_path_jump_points<Cost>(
+    node_grid: &Grid<SearchNode<Cost>>,
+    goal_coord: Coord,
+    seq: u64,
+    path: &mut Vec<Direction>
+) {
+    path.clear();
+
+    let mut node = node_grid.get(goal_coord).expect("Invalid search state");
+
+    loop {
+        let from_parent = if let Some(from_parent) = node.from_parent() {
+            from_parent
+        } else {
+            break;
+        };
+
+        path.push(from_parent);
+
+        let step = from_parent.opposite().coord();
+        let mut coord = node.coord;
+        loop {
+            coord += step;
+            let next_node = node_grid.get(coord).expect("Invalid search state");
+            if next_node.seen == seq {
+                node = next_node;
+                break;
+            }
+
+            path.push(from_parent);
+        }
+    }
+
     path.reverse();
 }
 

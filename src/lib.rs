@@ -4,6 +4,9 @@ extern crate num_traits;
 
 mod bfs;
 mod search;
+mod jump_point_search;
+mod astar;
+mod dijkstra;
 mod grid;
 mod path;
 mod error;
@@ -11,6 +14,9 @@ mod metadata;
 
 pub use bfs::*;
 pub use search::*;
+pub use jump_point_search::*;
+pub use astar::*;
+pub use dijkstra::*;
 pub use grid::*;
 pub use path::*;
 pub use error::*;
