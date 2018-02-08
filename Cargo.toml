@@ -10,6 +10,6 @@ repository = "https://github.com/stevebob/grid-search.git"
 documentation = "https://docs.rs/grid_search"
 
 [dependencies]
-direction = { path = "/home/steve/src/direction" }
-grid_2d = "0.1"
+direction = "0.7"
+grid_2d = "0.2"
 num-traits = "0.1"

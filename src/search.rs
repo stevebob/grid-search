@@ -202,22 +202,12 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
                         continue;
                     };
 
-                let index = self.node_grid.coord_to_index(neighbour_coord).expect(
-                    "SearchContext too small for grid",
-                );
-
-                let node = &mut self.node_grid[index];
-
-                Self::update_node_and_priority_queue(
-                    index,
+                self.see_successor(
                     current_cost + neighbour_cost,
                     neighbour_coord,
                     direction,
-                    self.seq,
                     &heuristic_fn,
                     goal,
-                    node,
-                    &mut self.priority_queue,
                 );
             }
         }
@@ -225,27 +215,30 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         Err(Error::NoPath)
     }
 
-    fn update_node_and_priority_queue<H>(
-        index: usize,
+    fn see_successor<H>(
+        &mut self,
         cost: Cost,
-        neighbour_coord: Coord,
+        successor_coord: Coord,
         direction: Direction,
-        seq: u64,
         heuristic_fn: H,
         goal: Coord,
-        neighbour_node: &mut SearchNode<Cost>,
-        priority_queue: &mut BinaryHeap<PriorityEntry<Cost>>,
     ) where
         H: Fn(Coord, Coord) -> Cost,
     {
-        if neighbour_node.seen != seq || neighbour_node.cost > cost {
-            neighbour_node.from_parent = Some(direction);
-            neighbour_node.seen = seq;
-            neighbour_node.cost = cost;
+        let index = self.node_grid.coord_to_index(successor_coord).expect(
+            "SearchContext too small for grid",
+        );
 
-            let heuristic = cost + heuristic_fn(neighbour_coord, goal);
+        let node = &mut self.node_grid[index];
+
+        if node.seen != self.seq || node.cost > cost {
+            node.from_parent = Some(direction);
+            node.seen = self.seq;
+            node.cost = cost;
+
+            let heuristic = cost + heuristic_fn(successor_coord, goal);
             let entry = PriorityEntry::new(index, heuristic);
-            priority_queue.push(entry);
+            self.priority_queue.push(entry);
         }
     }
 }
@@ -284,7 +277,6 @@ impl<Cost: Add<Cost> + PartialOrd<Cost> + Zero> HeuristicDirectionWeights<Cost> 
         Self { cardinal, ordinal }
     }
 }
-
 
 impl<Cost> SearchContext<Cost>
 where
@@ -327,6 +319,42 @@ where
         let heuristic_fn = |a, b| Self::diagonal_distance(a, b, &weights);
         self.search_general(grid, start, goal, Directions, heuristic_fn, path)
     }
+}
+
+fn jump_point_make_path<Cost: Add<Cost> + PartialOrd<Cost>>(
+    node_grid: &Grid<SearchNode<Cost>>,
+    goal_coord: Coord,
+    seq: u64,
+    path: &mut Vec<Direction>
+) {
+    path.clear();
+
+    let mut node = node_grid.get(goal_coord).expect("Invalid search state");
+
+    loop {
+        let from_parent = if let Some(from_parent) = node.from_parent() {
+            from_parent
+        } else {
+            break;
+        };
+
+        path.push(from_parent);
+
+        let step = from_parent.opposite().coord();
+        let mut coord = node.coord;
+        loop {
+            coord += step;
+            let next_node = node_grid.get(coord).expect("Invalid search state");
+            if next_node.seen == seq {
+                node = next_node;
+                break;
+            }
+
+            path.push(from_parent);
+        }
+    }
+
+    path.reverse();
 }
 
 impl SearchContext<f64> {
@@ -442,122 +470,92 @@ impl SearchContext<f64> {
     }
 
     fn expand_common(
+        &mut self,
         successor_coord: Coord,
         cost: f64,
         direction: Direction,
         goal: Coord,
-        seq: u64,
-        node_grid: &mut Grid<SearchNode<f64>>,
-        priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
     ) {
-        let index = node_grid.coord_to_index(successor_coord).expect(
-            "SearchContext too small for grid",
-        );
-
-        let node = &mut node_grid[index];
-
-        Self::update_node_and_priority_queue(
-            index,
+        self.see_successor(
             cost,
             successor_coord,
             direction,
-            seq,
             Self::octile_distance,
             goal,
-            node,
-            priority_queue,
         );
     }
 
     fn expand_cardinal<G>(
+        &mut self,
         grid: &G,
         current_coord: Coord,
         current_cost: f64,
         direction: CardinalDirection,
         goal: Coord,
-        seq: u64,
-        node_grid: &mut Grid<SearchNode<f64>>,
-        priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
     ) where
         G: SolidGrid,
     {
         if let Some((successor_coord, successor_cost)) =
             Self::jump_cardinal(grid, current_coord, direction, goal)
         {
-            Self::expand_common(
+            self.expand_common(
                 successor_coord,
                 current_cost + successor_cost,
                 direction.direction(),
                 goal,
-                seq,
-                node_grid,
-                priority_queue,
             );
         }
     }
 
     fn expand_ordinal<G>(
+        &mut self,
         grid: &G,
         current_coord: Coord,
         current_cost: f64,
         direction: OrdinalDirection,
         goal: Coord,
-        seq: u64,
-        node_grid: &mut Grid<SearchNode<f64>>,
-        priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
     ) where
         G: SolidGrid,
     {
         if let Some((successor_coord, successor_cost)) =
             Self::jump_ordinal(grid, current_coord, direction, goal)
         {
-            Self::expand_common(
+            self.expand_common(
                 successor_coord,
                 current_cost + successor_cost,
                 direction.direction(),
                 goal,
-                seq,
-                node_grid,
-                priority_queue,
             );
         }
     }
 
     fn expand_general<G>(
+        &mut self,
         grid: &G,
         current_coord: Coord,
         current_cost: f64,
         direction: Direction,
         goal: Coord,
-        seq: u64,
-        node_grid: &mut Grid<SearchNode<f64>>,
-        priority_queue: &mut BinaryHeap<PriorityEntry<f64>>,
     ) where
         G: SolidGrid,
     {
         match direction.typ() {
             DirectionType::Cardinal(direction) => {
-                Self::expand_cardinal(
+                self.expand_cardinal(
                     grid,
                     current_coord,
                     current_cost,
                     direction,
                     goal,
-                    seq,
-                    node_grid,
-                    priority_queue,
                 )
             }
             DirectionType::Ordinal(direction) => {
-                Self::expand_ordinal(
+                self.expand_ordinal(
                     grid,
                     current_coord,
                     current_cost,
                     direction,
                     goal,
-                    seq,
-                    node_grid,
-                    priority_queue,
                 )
             }
         }
@@ -583,15 +581,12 @@ impl SearchContext<f64> {
         );
 
         for direction in Directions {
-            Self::expand_general(
+            self.expand_general(
                 grid,
                 start,
                 initial_entry.cost,
                 direction,
                 goal,
-                self.seq,
-                &mut self.node_grid,
-                &mut self.priority_queue,
             );
         }
 
@@ -602,7 +597,7 @@ impl SearchContext<f64> {
             num_nodes_visited += 1;
 
             if current_entry.node_index == goal_index {
-                path::make_path(&self.node_grid, goal_index, path);
+                jump_point_make_path(&self.node_grid, goal, self.seq, path);
                 return Ok(SearchMetadata { num_nodes_visited });
             }
 
@@ -618,100 +613,76 @@ impl SearchContext<f64> {
 
             match direction.typ() {
                 DirectionType::Cardinal(direction) => {
-                    Self::expand_cardinal(
+                    self.expand_cardinal(
                         grid,
                         current_coord,
                         current_cost,
                         direction,
                         goal,
-                        self.seq,
-                        &mut self.node_grid,
-                        &mut self.priority_queue,
                     );
                     let left = direction.left90();
                     if grid.is_solid_or_outside(current_coord + left.coord()) {
-                        Self::expand_ordinal(
+                        self.expand_ordinal(
                             grid,
                             current_coord,
                             current_cost,
-                            OrdinalDirection::from_cardinals(direction, left).unwrap(),
+                            direction.left45(),
                             goal,
-                            self.seq,
-                            &mut self.node_grid,
-                            &mut self.priority_queue,
                         );
                     }
                     let right = direction.right90();
                     if grid.is_solid_or_outside(current_coord + right.coord()) {
-                        Self::expand_ordinal(
+                        self.expand_ordinal(
                             grid,
                             current_coord,
                             current_cost,
-                            OrdinalDirection::from_cardinals(direction, right).unwrap(),
+                            direction.right45(),
                             goal,
-                            self.seq,
-                            &mut self.node_grid,
-                            &mut self.priority_queue,
                         );
                     }
                 }
                 DirectionType::Ordinal(direction) => {
-                    Self::expand_ordinal(
+                    self.expand_ordinal(
                         grid,
                         current_coord,
                         current_cost,
                         direction,
                         goal,
-                        self.seq,
-                        &mut self.node_grid,
-                        &mut self.priority_queue,
                     );
                     let (left, right) = direction.to_cardinals();
-                    Self::expand_cardinal(
+                    self.expand_cardinal(
                         grid,
                         current_coord,
                         current_cost,
                         left,
                         goal,
-                        self.seq,
-                        &mut self.node_grid,
-                        &mut self.priority_queue,
                     );
-                    Self::expand_cardinal(
+                    self.expand_cardinal(
                         grid,
                         current_coord,
                         current_cost,
                         right,
                         goal,
-                        self.seq,
-                        &mut self.node_grid,
-                        &mut self.priority_queue,
                     );
 
                     let (check_right, check_left) = direction.opposite().to_cardinals();
 
                     if grid.is_solid_or_outside(current_coord + check_left.coord()) {
-                        Self::expand_ordinal(
+                        self.expand_ordinal(
                             grid,
                             current_coord,
                             current_cost,
                             direction.left90(),
                             goal,
-                            self.seq,
-                            &mut self.node_grid,
-                            &mut self.priority_queue,
                         );
                     }
                     if grid.is_solid_or_outside(current_coord + check_right.coord()) {
-                        Self::expand_ordinal(
+                        self.expand_ordinal(
                             grid,
                             current_coord,
                             current_cost,
                             direction.right90(),
                             goal,
-                            self.seq,
-                            &mut self.node_grid,
-                            &mut self.priority_queue,
                         );
                     }
                 }

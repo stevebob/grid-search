@@ -379,5 +379,6 @@ fn jps() {
 
     let mut ctx = SearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    let _result = ctx.search_jump_point(&grid, start, goal, &mut path);
+    ctx.search_jump_point(&grid, start, goal, &mut path).unwrap();
+    assert_eq!(path.len(), 7);
 }
