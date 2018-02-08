@@ -67,9 +67,10 @@ impl<Cost: PartialOrd<Cost>> Eq for PriorityEntry<Cost> {}
 
 impl<Cost: PartialOrd<Cost>> Ord for PriorityEntry<Cost> {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.cost.partial_cmp(&self.cost).unwrap_or(
-            Ordering::Equal,
-        )
+        other
+            .cost
+            .partial_cmp(&self.cost)
+            .unwrap_or(Ordering::Equal)
     }
 }
 
@@ -102,10 +103,9 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         G: SolidGrid,
     {
         if let Some(solid) = grid.is_solid(start) {
-
-            let index = self.node_grid.coord_to_index(start).expect(
-                "SearchContext too small for grid",
-            );
+            let index = self.node_grid
+                .coord_to_index(start)
+                .expect("SearchContext too small for grid");
 
             if solid {
                 return Err(Err(Error::StartSolid));
@@ -152,14 +152,13 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
 
         self.priority_queue.push(initial_entry);
 
-        let goal_index = self.node_grid.coord_to_index(goal).expect(
-            "SearchContext too small for grid",
-        );
+        let goal_index = self.node_grid
+            .coord_to_index(goal)
+            .expect("SearchContext too small for grid");
 
         let mut num_nodes_visited = 0;
 
         while let Some(current_entry) = self.priority_queue.pop() {
-
             num_nodes_visited += 1;
 
             if current_entry.node_index == goal_index {
@@ -210,9 +209,9 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
     ) where
         H: Fn(Coord, Coord) -> Cost,
     {
-        let index = self.node_grid.coord_to_index(successor_coord).expect(
-            "SearchContext too small for grid",
-        );
+        let index = self.node_grid
+            .coord_to_index(successor_coord)
+            .expect("SearchContext too small for grid");
 
         let node = &mut self.node_grid[index];
 

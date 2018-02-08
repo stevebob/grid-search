@@ -29,7 +29,7 @@ pub(crate) fn make_path_jump_points<Cost>(
     node_grid: &Grid<SearchNode<Cost>>,
     goal_coord: Coord,
     seq: u64,
-    path: &mut Vec<Direction>
+    path: &mut Vec<Direction>,
 ) {
     path.clear();
 

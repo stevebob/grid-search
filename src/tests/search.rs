@@ -71,8 +71,6 @@ impl CostGrid for FloatGrid {
     }
 }
 
-
-
 fn grid_from_strings(strings: &Vec<&str>, ordinal_multiplier: u32) -> (TestGrid, Coord, Coord) {
     let width = strings[0].len() as u32;
     let height = strings.len() as u32;
@@ -113,10 +111,26 @@ fn grid_from_strings(strings: &Vec<&str>, ordinal_multiplier: u32) -> (TestGrid,
     (grid, start.unwrap(), goal.unwrap())
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum WhichDirections {
+    Cardinal,
+    All,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum GridWeights {
+    Weighted,
+    Uniform,
+}
+
+use self::WhichDirections::*;
+use self::GridWeights::*;
+
 fn common_test(
     strings: &Vec<&str>,
     ordinal_multiplier: u32,
-    cardinal_only: bool,
+    which_directions: WhichDirections,
+    grid_weights: GridWeights,
     length: usize,
     cost: u32,
 ) {
@@ -124,7 +138,6 @@ fn common_test(
     let mut ctx = SearchContext::new(grid.width(), grid.height());
 
     let check_result = |path: &Vec<_>, metadata: SearchMetadata| {
-
         assert_eq!(path.len(), length);
 
         let walk = PathWalk::new(start, &path);
@@ -146,8 +159,7 @@ fn common_test(
 
     let mut path = Vec::new();
 
-    let (with_heuristic, without_heuristic) = if cardinal_only {
-
+    let (with_heuristic, without_heuristic, jps) = if which_directions == Cardinal {
         let metadata = ctx.dijkstra(&grid, start, goal, DirectionsCardinal, &mut path)
             .unwrap();
         let without_heuristic = check_result(&path, metadata);
@@ -157,10 +169,22 @@ fn common_test(
                 .unwrap();
         let with_heuristic = check_result(&path, metadata);
 
-        (with_heuristic, without_heuristic)
+        let jps = if grid_weights == Uniform {
+            let metadata = ctx
+                .jump_point_search_cardinal_manhatten_distance_heuristic(
+                    &grid,
+                    start,
+                    goal,
+                    &mut path,
+                )
+                .unwrap();
+            Some(check_result(&path, metadata))
+        } else {
+            None
+        };
 
+        (with_heuristic, without_heuristic, jps)
     } else {
-
         let metadata = ctx.dijkstra(&grid, start, goal, Directions, &mut path)
             .unwrap();
         let without_heuristic = check_result(&path, metadata);
@@ -172,13 +196,22 @@ fn common_test(
                 .unwrap();
         let with_heuristic = check_result(&path, metadata);
 
-        (with_heuristic, without_heuristic)
+        let jps = if grid_weights == Uniform {
+            let mut jps_ctx = SearchContext::new(grid.width(), grid.height());
+            let metadata = jps_ctx
+                .jump_point_search_octile_distance_heuristic(&grid, start, goal, &mut path)
+                .unwrap();
+            Some(check_result(&path, metadata))
+        } else {
+            None
+        };
+
+        (with_heuristic, without_heuristic, jps)
     };
 
     println!(
-        "Nodes visited: {}, Nodes visited with heuristic, {}",
-        without_heuristic,
-        with_heuristic
+        "Nodes visited: {}, With heuristic: {}, With JPS: {:?}",
+        without_heuristic, with_heuristic, jps
     );
 }
 
@@ -196,8 +229,8 @@ fn uniform_wall() {
         "..........",
         "..........",
     ];
-    common_test(&strings, 1, true, 12, 12);
-    common_test(&strings, 1, false, 7, 7);
+    common_test(&strings, 1, Cardinal, Uniform, 12, 12);
+    common_test(&strings, 1, All, Uniform, 7, 7);
 }
 
 #[test]
@@ -214,8 +247,8 @@ fn non_uniform_wall() {
         "....,,....",
         "....,,....",
     ];
-    common_test(&strings, 1, true, 16, 25);
-    common_test(&strings, 1, false, 9, 18);
+    common_test(&strings, 1, Cardinal, Weighted, 16, 25);
+    common_test(&strings, 1, All, Weighted, 9, 18);
 }
 
 #[test]
@@ -232,8 +265,8 @@ fn cheap_route() {
         "....,,,...",
         "....,,,...",
     ];
-    common_test(&strings, 1, true, 9, 18);
-    common_test(&strings, 1, false, 15, 15);
+    common_test(&strings, 1, Cardinal, Weighted, 9, 18);
+    common_test(&strings, 1, All, Weighted, 15, 15);
 }
 
 #[test]
@@ -268,8 +301,15 @@ fn start_is_goal() {
         "..........",
         "..........",
     ];
-    common_test(&strings, DEFAULT_ORDINAL_MULTIPLIER, true, 0, 0);
-    common_test(&strings, DEFAULT_ORDINAL_MULTIPLIER, false, 0, 0);
+    common_test(
+        &strings,
+        DEFAULT_ORDINAL_MULTIPLIER,
+        Cardinal,
+        Uniform,
+        0,
+        0,
+    );
+    common_test(&strings, DEFAULT_ORDINAL_MULTIPLIER, All, Uniform, 0, 0);
 }
 
 #[test]
@@ -294,7 +334,6 @@ fn goal_is_solid() {
 
     assert_eq!(result, Err(Error::NoPath));
 }
-
 
 #[test]
 fn start_is_solid() {
@@ -355,22 +394,22 @@ fn simple_optimality() {
         "..........",
     ];
 
-    common_test(&strings, 20, false, 2, 2);
-    common_test(&strings, 1, false, 1, 1);
+    common_test(&strings, 20, All, Weighted, 2, 2);
+    common_test(&strings, 1, All, Uniform, 1, 1);
 }
 
 #[test]
 fn jps() {
     let strings = vec![
-        "..........",
-        "....#.....",
         "....#.....",
         "....#.....",
         ".s..#.....",
+        "....#.....",
+        "....#.....",
         "....#...g.",
         "....#.....",
-        "..........",
-        "..........",
+        "....#.....",
+        "....#.....",
         "..........",
     ];
 
@@ -380,6 +419,31 @@ fn jps() {
 
     let mut ctx = SearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    ctx.jump_point_search_octile_distance_heuristic(&grid, start, goal, &mut path).unwrap();
-    assert_eq!(path.len(), 7);
+    ctx.jump_point_search_octile_distance_heuristic(&grid, start, goal, &mut path)
+        .unwrap();
+    assert_eq!(path.len(), 11);
+}
+
+#[test]
+fn cardinal_jps() {
+    let strings = vec![
+        "....#.....",
+        "....#.....",
+        ".s..#.....",
+        "....#.....",
+        "....#.....",
+        "....#...g.",
+        "....#.....",
+        "....#.....",
+        "....#.....",
+        "..........",
+    ];
+
+    let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
+
+    let mut ctx: SearchContext<u32> = SearchContext::new(grid.width(), grid.height());
+    let mut path = Vec::new();
+    ctx.jump_point_search_cardinal_manhatten_distance_heuristic(&grid, start, goal, &mut path)
+        .unwrap();
+    assert_eq!(path.len(), 18);
 }

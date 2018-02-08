@@ -53,8 +53,7 @@ where
     let (grid, start, goal) = grid_from_strings(strings);
     let mut ctx = BfsContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
-    let metadata = ctx.bfs(&grid, start, goal, directions, &mut path)
-        .unwrap();
+    let metadata = ctx.bfs(&grid, start, goal, directions, &mut path).unwrap();
 
     println!("{:?}", metadata);
 
@@ -146,7 +145,6 @@ fn goal_is_solid() {
 
     assert_eq!(result, Err(Error::NoPath));
 }
-
 
 #[test]
 fn start_is_solid() {

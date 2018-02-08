@@ -15,20 +15,16 @@ fn octile_distance(a: Coord, b: Coord) -> f64 {
     cardinal as f64 + ordinal as f64 * SQRT_2_MIN_1
 }
 
-fn has_forced_neighbour_cardinal<G>(
-    grid: &G,
-    coord: Coord,
-    direction: CardinalDirection,
-    ) -> bool
+fn has_forced_neighbour_cardinal<G>(grid: &G, coord: Coord, direction: CardinalDirection) -> bool
 where
-G: SolidGrid,
+    G: SolidGrid,
 {
     if grid.is_solid_or_outside(coord + direction.left90().coord()) {
-        return true;
+        return !grid.is_solid_or_outside(coord + direction.left45().coord());
     }
 
     if grid.is_solid_or_outside(coord + direction.right90().coord()) {
-        return true;
+        return !grid.is_solid_or_outside(coord + direction.right45().coord());
     }
 
     false
@@ -36,16 +32,14 @@ G: SolidGrid,
 
 fn has_forced_neighbour_ordinal<G>(grid: &G, coord: Coord, direction: OrdinalDirection) -> bool
 where
-G: SolidGrid,
+    G: SolidGrid,
 {
-    let (left, right) = direction.opposite().to_cardinals();
-
-    if grid.is_solid_or_outside(coord + left.coord()) {
-        return true;
+    if grid.is_solid_or_outside(coord + direction.left135().coord()) {
+        return !grid.is_solid_or_outside(coord + direction.left90().coord());
     }
 
-    if grid.is_solid_or_outside(coord + right.coord()) {
-        return true;
+    if grid.is_solid_or_outside(coord + direction.right135().coord()) {
+        return !grid.is_solid_or_outside(coord + direction.right90().coord());
     }
 
     false
@@ -56,9 +50,9 @@ fn jump_cardinal<G>(
     coord: Coord,
     direction: CardinalDirection,
     goal: Coord,
-    ) -> Option<(Coord, f64)>
+) -> Option<(Coord, f64)>
 where
-G: SolidGrid,
+    G: SolidGrid,
 {
     let neighbour_coord = coord + direction.coord();
 
@@ -76,8 +70,7 @@ G: SolidGrid,
         return Some((neighbour_coord, COST));
     }
 
-    jump_cardinal(grid, neighbour_coord, direction, goal)
-        .map(|(coord, cost)| (coord, cost + COST))
+    jump_cardinal(grid, neighbour_coord, direction, goal).map(|(coord, cost)| (coord, cost + COST))
 }
 
 fn jump_ordinal<G>(
@@ -85,9 +78,9 @@ fn jump_ordinal<G>(
     coord: Coord,
     direction: OrdinalDirection,
     goal: Coord,
-    ) -> Option<(Coord, f64)>
+) -> Option<(Coord, f64)>
 where
-G: SolidGrid,
+    G: SolidGrid,
 {
     let neighbour_coord = coord + direction.coord();
 
@@ -107,33 +100,16 @@ G: SolidGrid,
 
     let (card0, card1) = direction.to_cardinals();
 
-    if jump_cardinal(grid, neighbour_coord, card0, goal).is_some() ||
-        jump_cardinal(grid, neighbour_coord, card1, goal).is_some()
-        {
-            return Some((neighbour_coord, COST));
-        }
+    if jump_cardinal(grid, neighbour_coord, card0, goal).is_some()
+        || jump_cardinal(grid, neighbour_coord, card1, goal).is_some()
+    {
+        return Some((neighbour_coord, COST));
+    }
 
-    jump_ordinal(grid, neighbour_coord, direction, goal)
-        .map(|(coord, cost)| (coord, cost + COST))
+    jump_ordinal(grid, neighbour_coord, direction, goal).map(|(coord, cost)| (coord, cost + COST))
 }
 
 impl SearchContext<f64> {
-    fn expand_common(
-        &mut self,
-        successor_coord: Coord,
-        cost: f64,
-        direction: Direction,
-        goal: Coord,
-    ) {
-        self.see_successor(
-            cost,
-            successor_coord,
-            direction,
-            octile_distance,
-            goal,
-        );
-    }
-
     fn expand_cardinal<G>(
         &mut self,
         grid: &G,
@@ -147,10 +123,11 @@ impl SearchContext<f64> {
         if let Some((successor_coord, successor_cost)) =
             jump_cardinal(grid, current_coord, direction, goal)
         {
-            self.expand_common(
-                successor_coord,
+            self.see_successor(
                 current_cost + successor_cost,
+                successor_coord,
                 direction.direction(),
+                octile_distance,
                 goal,
             );
         }
@@ -169,10 +146,11 @@ impl SearchContext<f64> {
         if let Some((successor_coord, successor_cost)) =
             jump_ordinal(grid, current_coord, direction, goal)
         {
-            self.expand_common(
-                successor_coord,
+            self.see_successor(
                 current_cost + successor_cost,
+                successor_coord,
                 direction.direction(),
+                octile_distance,
                 goal,
             );
         }
@@ -190,22 +168,10 @@ impl SearchContext<f64> {
     {
         match direction.typ() {
             DirectionType::Cardinal(direction) => {
-                self.expand_cardinal(
-                    grid,
-                    current_coord,
-                    current_cost,
-                    direction,
-                    goal,
-                )
+                self.expand_cardinal(grid, current_coord, current_cost, direction, goal)
             }
             DirectionType::Ordinal(direction) => {
-                self.expand_ordinal(
-                    grid,
-                    current_coord,
-                    current_cost,
-                    direction,
-                    goal,
-                )
+                self.expand_ordinal(grid, current_coord, current_cost, direction, goal)
             }
         }
     }
@@ -225,24 +191,17 @@ impl SearchContext<f64> {
             Err(result) => return result,
         };
 
-        let goal_index = self.node_grid.coord_to_index(goal).expect(
-            "SearchContext too small for grid",
-        );
+        let goal_index = self.node_grid
+            .coord_to_index(goal)
+            .expect("SearchContext too small for grid");
 
         for direction in Directions {
-            self.expand_general(
-                grid,
-                start,
-                initial_entry.cost,
-                direction,
-                goal,
-            );
+            self.expand_general(grid, start, initial_entry.cost, direction, goal);
         }
 
         let mut num_nodes_visited = 0;
 
         while let Some(current_entry) = self.priority_queue.pop() {
-
             num_nodes_visited += 1;
 
             if current_entry.node_index == goal_index {
@@ -262,13 +221,7 @@ impl SearchContext<f64> {
 
             match direction.typ() {
                 DirectionType::Cardinal(direction) => {
-                    self.expand_cardinal(
-                        grid,
-                        current_coord,
-                        current_cost,
-                        direction,
-                        goal,
-                    );
+                    self.expand_cardinal(grid, current_coord, current_cost, direction, goal);
                     let left = direction.left90();
                     if grid.is_solid_or_outside(current_coord + left.coord()) {
                         self.expand_ordinal(
@@ -291,28 +244,10 @@ impl SearchContext<f64> {
                     }
                 }
                 DirectionType::Ordinal(direction) => {
-                    self.expand_ordinal(
-                        grid,
-                        current_coord,
-                        current_cost,
-                        direction,
-                        goal,
-                    );
+                    self.expand_ordinal(grid, current_coord, current_cost, direction, goal);
                     let (left, right) = direction.to_cardinals();
-                    self.expand_cardinal(
-                        grid,
-                        current_coord,
-                        current_cost,
-                        left,
-                        goal,
-                    );
-                    self.expand_cardinal(
-                        grid,
-                        current_coord,
-                        current_cost,
-                        right,
-                        goal,
-                    );
+                    self.expand_cardinal(grid, current_coord, current_cost, left, goal);
+                    self.expand_cardinal(grid, current_coord, current_cost, right, goal);
 
                     let (check_right, check_left) = direction.opposite().to_cardinals();
 

@@ -1,5 +1,5 @@
 use std::ops::{Add, Mul};
-use num_traits::{Zero, NumCast};
+use num_traits::{NumCast, Zero};
 use direction::*;
 use grid_2d::*;
 use grid::*;
@@ -12,12 +12,8 @@ fn manhatten_distance(a: Coord, b: Coord) -> i32 {
 }
 
 fn diagonal_distance<Cost>(a: Coord, b: Coord, weights: &HeuristicDirectionWeights<Cost>) -> Cost
-    where
-        Cost:  Copy
-        + Add<Cost, Output = Cost>
-        + Mul<Cost, Output = Cost>
-        + PartialOrd<Cost>
-        + NumCast
+where
+    Cost: Copy + Add<Cost, Output = Cost> + Mul<Cost, Output = Cost> + PartialOrd<Cost> + NumCast,
 {
     let dx = (a.x - b.x).abs();
     let dy = (a.y - b.y).abs();

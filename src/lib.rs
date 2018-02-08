@@ -5,6 +5,7 @@ extern crate num_traits;
 mod bfs;
 mod search;
 mod jump_point_search;
+mod cardinal_jump_point_search;
 mod astar;
 mod dijkstra;
 mod grid;
