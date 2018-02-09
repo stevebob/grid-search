@@ -198,12 +198,7 @@ fn start_outside_grid() {
 
 #[test]
 fn dijkstra_map() {
-    let strings = vec![
-        "..#.",
-        "..##",
-        ".#.B",
-        ".#..",
-    ];
+    let strings = vec!["..#.", "..##", ".#.B", ".#.."];
 
     let (grid, start, _) = grid_from_strings(&strings);
 
@@ -220,19 +215,28 @@ fn dijkstra_map() {
     assert!(dijkstra_map.get(Coord::new(3, 0)).is_unvisited());
     assert!(dijkstra_map.get(Coord::new(1, 2)).is_unvisited());
     assert_eq!(dijkstra_map.get(Coord::new(0, 3)).cell().unwrap().cost(), 4);
-    assert_eq!(dijkstra_map.get(Coord::new(0, 3)).cell().unwrap().direction(), Direction::North);
+    assert_eq!(
+        dijkstra_map
+            .get(Coord::new(0, 3))
+            .cell()
+            .unwrap()
+            .direction(),
+        Direction::North
+    );
     assert_eq!(dijkstra_map.get(Coord::new(1, 1)).cell().unwrap().cost(), 2);
-    assert_eq!(dijkstra_map.get(Coord::new(1, 1)).cell().unwrap().direction(), Direction::SouthEast);
+    assert_eq!(
+        dijkstra_map
+            .get(Coord::new(1, 1))
+            .cell()
+            .unwrap()
+            .direction(),
+        Direction::SouthEast
+    );
 }
 
 #[test]
 fn dijkstra_map_cardinal() {
-    let strings = vec![
-        "..#.",
-        "...#",
-        ".#.B",
-        ".#..",
-    ];
+    let strings = vec!["..#.", "...#", ".#.B", ".#.."];
 
     let (grid, start, _) = grid_from_strings(&strings);
 
@@ -249,7 +253,21 @@ fn dijkstra_map_cardinal() {
     assert!(dijkstra_map.get(Coord::new(3, 0)).is_unvisited());
     assert!(dijkstra_map.get(Coord::new(1, 2)).is_unvisited());
     assert_eq!(dijkstra_map.get(Coord::new(0, 3)).cell().unwrap().cost(), 6);
-    assert_eq!(dijkstra_map.get(Coord::new(0, 3)).cell().unwrap().direction(), Direction::North);
+    assert_eq!(
+        dijkstra_map
+            .get(Coord::new(0, 3))
+            .cell()
+            .unwrap()
+            .direction(),
+        Direction::North
+    );
     assert_eq!(dijkstra_map.get(Coord::new(1, 1)).cell().unwrap().cost(), 3);
-    assert_eq!(dijkstra_map.get(Coord::new(1, 1)).cell().unwrap().direction(), Direction::East);
+    assert_eq!(
+        dijkstra_map
+            .get(Coord::new(1, 1))
+            .cell()
+            .unwrap()
+            .direction(),
+        Direction::East
+    );
 }

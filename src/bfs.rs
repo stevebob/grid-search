@@ -73,7 +73,6 @@ impl BfsContext {
         D: Copy + IntoIterator<Item = V>,
     {
         if let Some(solid) = grid.is_solid(start) {
-
             if solid {
                 return Err(Error::StartSolid);
             }
@@ -151,12 +150,12 @@ impl BfsContext {
         C: Copy + Zero + One + Add<C>,
     {
         if let Some(solid) = grid.is_solid(start) {
-
             if solid {
                 return Err(Error::StartSolid);
             }
 
-            let index = dijkstra_map.grid
+            let index = dijkstra_map
+                .grid
                 .coord_to_index(start)
                 .expect("BfsContext too small for grid");
 
@@ -168,7 +167,6 @@ impl BfsContext {
             let cell = &mut dijkstra_map.grid[index];
             cell.seen = dijkstra_map.seq;
             cell.cost = Zero::zero();
-
         } else {
             return Err(Error::StartOutsideGrid);
         }
@@ -193,7 +191,8 @@ impl BfsContext {
                     continue;
                 }
 
-                let index = dijkstra_map.grid
+                let index = dijkstra_map
+                    .grid
                     .coord_to_index(neighbour_coord)
                     .expect("BfsContext too small for grid");
 
@@ -207,8 +206,6 @@ impl BfsContext {
             }
         }
 
-        Ok(SearchMetadata {
-            num_nodes_visited,
-        })
+        Ok(SearchMetadata { num_nodes_visited })
     }
 }

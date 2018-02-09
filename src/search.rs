@@ -1,7 +1,7 @@
 use std::collections::BinaryHeap;
 use std::ops::Add;
 use std::cmp::Ordering;
-use num_traits::{Zero, One};
+use num_traits::{One, Zero};
 use direction::*;
 use grid_2d::*;
 use grid::*;
@@ -248,24 +248,24 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
         D: Copy + IntoIterator<Item = V>,
     {
         if let Some(solid) = grid.is_solid(start) {
-
             if solid {
                 return Err(Error::StartSolid);
             };
 
-            let index = dijkstra_map.grid
+            let index = dijkstra_map
+                .grid
                 .coord_to_index(start)
                 .expect("SearchContext too small for grid");
 
             self.priority_queue.clear();
-            self.priority_queue.push(PriorityEntry::new(index, Zero::zero()));
+            self.priority_queue
+                .push(PriorityEntry::new(index, Zero::zero()));
 
             dijkstra_map.seq += 1;
             dijkstra_map.origin = start;
             let cell = &mut dijkstra_map.grid[index];
             cell.seen = dijkstra_map.seq;
             cell.cost = Zero::zero();
-
         } else {
             return Err(Error::StartOutsideGrid);
         }
@@ -297,7 +297,8 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
 
                 let cost = current_cost + neighbour_cost;
 
-                let index = dijkstra_map.grid
+                let index = dijkstra_map
+                    .grid
                     .coord_to_index(neighbour_coord)
                     .expect("SearchContext too small for grid");
 
@@ -314,8 +315,6 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
             }
         }
 
-        Ok(SearchMetadata {
-            num_nodes_visited,
-        })
+        Ok(SearchMetadata { num_nodes_visited })
     }
 }

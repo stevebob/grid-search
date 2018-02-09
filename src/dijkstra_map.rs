@@ -24,8 +24,8 @@ impl<Cost: Zero + Copy> From<Coord> for DijkstraMapCell<Cost> {
 }
 
 impl<Cost> DijkstraMapCell<Cost>
-    where
-        Cost: Copy,
+where
+    Cost: Copy,
 {
     pub fn cost(&self) -> Cost {
         self.cost
@@ -78,8 +78,8 @@ pub struct DijkstraMap<Cost> {
 }
 
 impl<Cost> DijkstraMap<Cost>
-    where
-        Cost: Zero + Copy,
+where
+    Cost: Zero + Copy,
 {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
