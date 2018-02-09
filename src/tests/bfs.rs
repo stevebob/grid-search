@@ -3,6 +3,7 @@ use grid_2d::*;
 use grid::SolidGrid;
 use path::PathWalk;
 use bfs::*;
+use dijkstra_map::*;
 use error::*;
 
 fn grid_from_strings(strings: &Vec<&str>) -> (Grid<bool>, Coord, Coord) {
@@ -193,4 +194,62 @@ fn start_outside_grid() {
     let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
 
     assert_eq!(result, Err(Error::StartOutsideGrid));
+}
+
+#[test]
+fn dijkstra_map() {
+    let strings = vec![
+        "..#.",
+        "..##",
+        ".#.B",
+        ".#..",
+    ];
+
+    let (grid, start, _) = grid_from_strings(&strings);
+
+    let mut ctx = BfsContext::new(grid.width(), grid.height());
+    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.width(), ctx.height());
+
+    let result = ctx.populate_dijkstra_map(&grid, start, Directions, &mut dijkstra_map)
+        .unwrap();
+
+    assert_eq!(result.num_nodes_visited, 10);
+
+    assert!(dijkstra_map.get(Coord::new(10, 10)).is_outside());
+    assert!(dijkstra_map.get(Coord::new(3, 2)).is_origin());
+    assert!(dijkstra_map.get(Coord::new(3, 0)).is_unvisited());
+    assert!(dijkstra_map.get(Coord::new(1, 2)).is_unvisited());
+    assert_eq!(dijkstra_map.get(Coord::new(0, 3)).cell().unwrap().cost(), 4);
+    assert_eq!(dijkstra_map.get(Coord::new(0, 3)).cell().unwrap().direction(), Direction::North);
+    assert_eq!(dijkstra_map.get(Coord::new(1, 1)).cell().unwrap().cost(), 2);
+    assert_eq!(dijkstra_map.get(Coord::new(1, 1)).cell().unwrap().direction(), Direction::SouthEast);
+}
+
+#[test]
+fn dijkstra_map_cardinal() {
+    let strings = vec![
+        "..#.",
+        "...#",
+        ".#.B",
+        ".#..",
+    ];
+
+    let (grid, start, _) = grid_from_strings(&strings);
+
+    let mut ctx = BfsContext::new(grid.width(), grid.height());
+    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.width(), ctx.height());
+
+    let result = ctx.populate_dijkstra_map(&grid, start, CardinalDirections, &mut dijkstra_map)
+        .unwrap();
+
+    assert_eq!(result.num_nodes_visited, 11);
+
+    assert!(dijkstra_map.get(Coord::new(10, 10)).is_outside());
+    assert!(dijkstra_map.get(Coord::new(3, 2)).is_origin());
+    assert!(dijkstra_map.get(Coord::new(3, 0)).is_unvisited());
+    assert!(dijkstra_map.get(Coord::new(1, 2)).is_unvisited());
+    assert_eq!(dijkstra_map.get(Coord::new(0, 3)).cell().unwrap().cost(), 6);
+    assert_eq!(dijkstra_map.get(Coord::new(0, 3)).cell().unwrap().direction(), Direction::North);
+    assert_eq!(dijkstra_map.get(Coord::new(1, 1)).cell().unwrap().cost(), 3);
+    assert_eq!(dijkstra_map.get(Coord::new(1, 1)).cell().unwrap().direction(), Direction::East);
 }

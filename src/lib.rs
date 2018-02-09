@@ -15,6 +15,7 @@ mod grid;
 mod path;
 mod error;
 mod metadata;
+mod dijkstra_map;
 
 pub use bfs::*;
 pub use search::*;
@@ -25,6 +26,7 @@ pub use grid::*;
 pub use path::*;
 pub use error::*;
 pub use metadata::*;
+pub use dijkstra_map::*;
 
 #[cfg(test)]
 mod tests;

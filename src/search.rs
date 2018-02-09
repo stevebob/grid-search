@@ -1,13 +1,14 @@
 use std::collections::BinaryHeap;
 use std::ops::Add;
 use std::cmp::Ordering;
-use num_traits::Zero;
+use num_traits::{Zero, One};
 use direction::*;
 use grid_2d::*;
 use grid::*;
 use error::*;
 use metadata::*;
 use path::{self, PathNode};
+use dijkstra_map::*;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub(crate) struct SearchNode<Cost> {
@@ -88,6 +89,12 @@ impl<Cost: PartialOrd<Cost> + Zero> SearchContext<Cost> {
             node_grid: Grid::new_from_coord(width, height),
             priority_queue: BinaryHeap::new(),
         }
+    }
+    pub fn width(&self) -> u32 {
+        self.node_grid.width()
+    }
+    pub fn height(&self) -> u32 {
+        self.node_grid.height()
     }
 }
 
@@ -224,5 +231,91 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
             let entry = PriorityEntry::new(index, heuristic);
             self.priority_queue.push(entry);
         }
+    }
+}
+
+impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost> {
+    pub fn populate_dijkstra_map<G, V, D>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        directions: D,
+        dijkstra_map: &mut DijkstraMap<Cost>,
+    ) -> Result<SearchMetadata, Error>
+    where
+        G: CostGrid<Cost = Cost>,
+        V: Into<Direction>,
+        D: Copy + IntoIterator<Item = V>,
+    {
+        if let Some(solid) = grid.is_solid(start) {
+
+            if solid {
+                return Err(Error::StartSolid);
+            };
+
+            let index = dijkstra_map.grid
+                .coord_to_index(start)
+                .expect("SearchContext too small for grid");
+
+            self.priority_queue.clear();
+            self.priority_queue.push(PriorityEntry::new(index, Zero::zero()));
+
+            dijkstra_map.seq += 1;
+            dijkstra_map.origin = start;
+            let cell = &mut dijkstra_map.grid[index];
+            cell.seen = dijkstra_map.seq;
+            cell.cost = Zero::zero();
+
+        } else {
+            return Err(Error::StartOutsideGrid);
+        }
+
+        let mut num_nodes_visited = 0;
+
+        while let Some(current_entry) = self.priority_queue.pop() {
+            num_nodes_visited += 1;
+
+            let (current_coord, current_cost) = {
+                let cell = &mut dijkstra_map.grid[current_entry.node_index];
+                if cell.visited == dijkstra_map.seq {
+                    continue;
+                }
+                cell.visited = dijkstra_map.seq;
+                (cell.coord, cell.cost)
+            };
+
+            for d in directions {
+                let direction = d.into();
+                let neighbour_coord = current_coord + direction.coord();
+
+                let neighbour_cost =
+                    if let Some(CostCell::Cost(cost)) = grid.cost(neighbour_coord, direction) {
+                        cost
+                    } else {
+                        continue;
+                    };
+
+                let cost = current_cost + neighbour_cost;
+
+                let index = dijkstra_map.grid
+                    .coord_to_index(neighbour_coord)
+                    .expect("SearchContext too small for grid");
+
+                let cell = &mut dijkstra_map.grid[index];
+
+                if cell.seen != dijkstra_map.seq || cell.cost > cost {
+                    cell.direction = direction.opposite();
+                    cell.seen = dijkstra_map.seq;
+                    cell.cost = cost;
+
+                    let entry = PriorityEntry::new(index, cost);
+                    self.priority_queue.push(entry);
+                }
+            }
+        }
+
+        Ok(SearchMetadata {
+            num_nodes_visited,
+        })
     }
 }

@@ -3,6 +3,7 @@ use grid_2d::*;
 use grid::*;
 use path::PathWalk;
 use search::*;
+use dijkstra_map::*;
 use astar::*;
 use error::*;
 use metadata::*;
@@ -433,4 +434,52 @@ fn cardinal_jps() {
     ctx.jump_point_search_cardinal_manhatten_distance_heuristic(&grid, start, goal, &mut path)
         .unwrap();
     assert_eq!(path.len(), 18);
+}
+
+#[test]
+fn dijkstra_map() {
+    let strings = vec![
+        "..#.",
+        "..##",
+        ".#.B",
+        ".#..",
+    ];
+
+    let (grid, start, _) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
+
+    let mut ctx: SearchContext<u32> = SearchContext::new(grid.width(), grid.height());
+    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.width(), ctx.height());
+
+    let result = ctx.populate_dijkstra_map(&grid, start, Directions, &mut dijkstra_map)
+        .unwrap();
+
+    assert_eq!(result.num_nodes_visited, 10);
+
+    assert!(dijkstra_map.get(Coord::new(10, 10)).is_outside());
+    assert!(dijkstra_map.get(Coord::new(3, 2)).is_origin());
+    assert!(dijkstra_map.get(Coord::new(3, 0)).is_unvisited());
+    assert!(dijkstra_map.get(Coord::new(1, 2)).is_unvisited());
+    assert_eq!(dijkstra_map.get(Coord::new(0, 3)).cell().unwrap().cost(), 6);
+    assert_eq!(dijkstra_map.get(Coord::new(0, 3)).cell().unwrap().direction(), Direction::North);
+    assert_eq!(dijkstra_map.get(Coord::new(1, 1)).cell().unwrap().cost(), 3);
+    assert_eq!(dijkstra_map.get(Coord::new(1, 1)).cell().unwrap().direction(), Direction::SouthEast);
+}
+
+#[test]
+fn dijkstra_map_weights() {
+    let strings = vec![
+        "...",
+        ".B.",
+        "...",
+    ];
+
+    let (grid, start, _) = grid_from_strings(&strings, 20);
+
+    let mut ctx: SearchContext<u32> = SearchContext::new(grid.width(), grid.height());
+    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.width(), ctx.height());
+
+    ctx.populate_dijkstra_map(&grid, start, Directions, &mut dijkstra_map)
+        .unwrap();
+
+    assert_eq!(dijkstra_map.get(Coord::new(0, 0)).cell().unwrap().cost(), 2);
 }
