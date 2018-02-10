@@ -11,8 +11,8 @@ pub struct DijkstraMapCell<Cost> {
     pub(crate) coord: Coord,
 }
 
-impl<Cost: Zero + Copy> From<Coord> for DijkstraMapCell<Cost> {
-    fn from(coord: Coord) -> Self {
+impl<Cost: Zero> DijkstraMapCell<Cost> {
+    fn new(coord: Coord) -> Self {
         Self {
             seen: 0,
             visited: 0,
@@ -84,7 +84,7 @@ where
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             seq: 1,
-            grid: Grid::new_from_coord(width, height),
+            grid: Grid::new_from_fn(width, height, DijkstraMapCell::new),
             origin: Coord::new(0, 0),
         }
     }
