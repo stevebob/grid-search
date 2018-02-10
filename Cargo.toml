@@ -1,7 +1,7 @@
 [package]
 name = "grid_search"
 description = "Collection of searching algorithms"
-version = "0.4.2"
+version = "0.5.0"
 authors = ["Stephen Sherratt <sfsherratt@gmail.com>"]
 license = "MIT"
 readme = "README.md"
