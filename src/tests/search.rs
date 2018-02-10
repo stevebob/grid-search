@@ -169,7 +169,7 @@ fn common_test(
         let with_heuristic = check_result(&path, metadata);
 
         let jps = if grid_weights == Uniform {
-            let mut jps_ctx = SearchContext::new(grid.width(), grid.height());
+            let mut jps_ctx: SearchContext<f64> = SearchContext::new(grid.width(), grid.height());
             let metadata = jps_ctx
                 .jump_point_search_octile_distance_heuristic(&grid, start, goal, &mut path)
                 .unwrap();
@@ -405,7 +405,7 @@ fn jps() {
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
 
-    let mut ctx = SearchContext::new(grid.width(), grid.height());
+    let mut ctx: SearchContext<f32> = SearchContext::new(grid.width(), grid.height());
     let mut path = Vec::new();
     ctx.jump_point_search_octile_distance_heuristic(&grid, start, goal, &mut path)
         .unwrap();

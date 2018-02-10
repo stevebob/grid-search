@@ -1,3 +1,5 @@
+use std::ops::*;
+use num::traits::*;
 use direction::*;
 use grid_2d::*;
 use metadata::*;
@@ -6,13 +8,23 @@ use error::*;
 use grid::*;
 use path;
 
-fn octile_distance(a: Coord, b: Coord) -> f64 {
+fn octile_distance<C>(a: Coord, b: Coord) -> C
+where
+    C: Add<C, Output = C> + Mul<C, Output = C> + FloatConst + NumCast
+{
     let dx = (a.x - b.x).abs();
     let dy = (a.y - b.y).abs();
-    let (cardinal, ordinal) = if dx > dy { (dx, dx) } else { (dy, dx) };
+    let (cardinal, ordinal) = if dx > dy {
+        (dx - dy, dy)
+    } else {
+        (dy - dx, dx)
+    };
 
-    const SQRT_2_MIN_1: f64 = ::std::f64::consts::SQRT_2 - 1.0;
-    cardinal as f64 + ordinal as f64 * SQRT_2_MIN_1
+    let sqrt_2: C = FloatConst::SQRT_2();
+    let cardinal: C = NumCast::from(cardinal).expect("Failed to cast to Cost");
+    let ordinal: C = NumCast::from(ordinal).expect("Failed to cast to Cost");
+
+    cardinal + ordinal * sqrt_2
 }
 
 fn has_forced_neighbour_cardinal<G>(grid: &G, coord: Coord, direction: CardinalDirection) -> bool
@@ -45,14 +57,15 @@ where
     false
 }
 
-fn jump_cardinal<G>(
+fn jump_cardinal<G, C>(
     grid: &G,
     coord: Coord,
     direction: CardinalDirection,
     goal: Coord,
-) -> Option<(Coord, f64)>
+) -> Option<(Coord, C)>
 where
     G: SolidGrid,
+    C: Add<C, Output = C> + One,
 {
     let neighbour_coord = coord + direction.coord();
 
@@ -60,27 +73,27 @@ where
         return None;
     }
 
-    const COST: f64 = 1.0;
-
     if neighbour_coord == goal {
-        return Some((neighbour_coord, COST));
+        return Some((neighbour_coord, One::one()));
     }
 
     if has_forced_neighbour_cardinal(grid, neighbour_coord, direction) {
-        return Some((neighbour_coord, COST));
+        return Some((neighbour_coord, One::one()));
     }
 
-    jump_cardinal(grid, neighbour_coord, direction, goal).map(|(coord, cost)| (coord, cost + COST))
+    jump_cardinal(grid, neighbour_coord, direction, goal)
+        .map(|(coord, cost): (_, C)| (coord, cost + One::one()))
 }
 
-fn jump_ordinal<G>(
+fn jump_ordinal<G, C>(
     grid: &G,
     coord: Coord,
     direction: OrdinalDirection,
     goal: Coord,
-) -> Option<(Coord, f64)>
+) -> Option<(Coord, C)>
 where
     G: SolidGrid,
+    C: Add<C, Output = C> + One + FloatConst,
 {
     let neighbour_coord = coord + direction.coord();
 
@@ -88,40 +101,42 @@ where
         return None;
     }
 
-    const COST: f64 = ::std::f64::consts::SQRT_2;
-
     if neighbour_coord == goal {
-        return Some((neighbour_coord, COST));
+        return Some((neighbour_coord, FloatConst::SQRT_2()));
     }
 
     if has_forced_neighbour_ordinal(grid, neighbour_coord, direction) {
-        return Some((neighbour_coord, COST));
+        return Some((neighbour_coord, FloatConst::SQRT_2()));
     }
 
     let (card0, card1) = direction.to_cardinals();
 
-    if jump_cardinal(grid, neighbour_coord, card0, goal).is_some()
-        || jump_cardinal(grid, neighbour_coord, card1, goal).is_some()
+    if jump_cardinal::<_, C>(grid, neighbour_coord, card0, goal).is_some()
+        || jump_cardinal::<_, C>(grid, neighbour_coord, card1, goal).is_some()
     {
-        return Some((neighbour_coord, COST));
+        return Some((neighbour_coord, FloatConst::SQRT_2()));
     }
 
-    jump_ordinal(grid, neighbour_coord, direction, goal).map(|(coord, cost)| (coord, cost + COST))
+    jump_ordinal(grid, neighbour_coord, direction, goal)
+        .map(|(coord, cost): (_, C)| (coord, cost + FloatConst::SQRT_2()))
 }
 
-impl SearchContext<f64> {
+impl<C> SearchContext<C>
+where
+    C: Copy + Zero + One + Add<C, Output = C> + Mul<C, Output = C> + FloatConst + NumCast + PartialOrd<C>,
+{
     fn expand_cardinal<G>(
         &mut self,
         grid: &G,
         current_coord: Coord,
-        current_cost: f64,
+        current_cost: C,
         direction: CardinalDirection,
         goal: Coord,
     ) where
         G: SolidGrid,
     {
         if let Some((successor_coord, successor_cost)) =
-            jump_cardinal(grid, current_coord, direction, goal)
+            jump_cardinal::<_, C>(grid, current_coord, direction, goal)
         {
             self.see_successor(
                 current_cost + successor_cost,
@@ -137,14 +152,14 @@ impl SearchContext<f64> {
         &mut self,
         grid: &G,
         current_coord: Coord,
-        current_cost: f64,
+        current_cost: C,
         direction: OrdinalDirection,
         goal: Coord,
     ) where
         G: SolidGrid,
     {
         if let Some((successor_coord, successor_cost)) =
-            jump_ordinal(grid, current_coord, direction, goal)
+            jump_ordinal::<_, C>(grid, current_coord, direction, goal)
         {
             self.see_successor(
                 current_cost + successor_cost,
@@ -160,7 +175,7 @@ impl SearchContext<f64> {
         &mut self,
         grid: &G,
         current_coord: Coord,
-        current_cost: f64,
+        current_cost: C,
         direction: Direction,
         goal: Coord,
     ) where
