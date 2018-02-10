@@ -1,7 +1,7 @@
 use std::collections::BinaryHeap;
 use std::ops::Add;
 use std::cmp::Ordering;
-use num_traits::{One, Zero};
+use num::traits::{One, Zero};
 use direction::*;
 use grid_2d::*;
 use grid::*;

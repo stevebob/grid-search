@@ -1,5 +1,5 @@
 use std::ops::Add;
-use num_traits::{NumCast, One, Zero};
+use num::traits::{NumCast, One, Zero};
 use direction::*;
 use grid_2d::*;
 use grid::*;

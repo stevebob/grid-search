@@ -1,4 +1,4 @@
-use num_traits::Zero;
+use num::traits::Zero;
 use grid_2d::*;
 use direction::*;
 

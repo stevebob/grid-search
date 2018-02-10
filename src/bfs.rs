@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::ops::Add;
-use num_traits::{One, Zero};
+use num::traits::{One, Zero};
 use direction::Direction;
 use grid::SolidGrid;
 use grid_2d::*;
