@@ -10,7 +10,7 @@ fn grid_from_strings(strings: &Vec<&str>) -> (Grid<bool>, Coord, Coord) {
     let width = strings[0].len() as u32;
     let height = strings.len() as u32;
     let size = Size::new(width, height);
-    let mut grid = Grid::new_copy(size, false);
+    let mut grid = Grid::new_clone(size, false);
     let mut start = None;
     let mut goal = None;
     for (i, line) in strings.into_iter().enumerate() {
