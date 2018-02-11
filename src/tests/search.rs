@@ -16,11 +16,8 @@ struct TestGrid {
 }
 
 impl TestGrid {
-    fn width(&self) -> u32 {
-        self.grid.width()
-    }
-    fn height(&self) -> u32 {
-        self.grid.height()
+    fn size(&self) -> Size {
+        self.grid.size()
     }
 }
 
@@ -48,7 +45,8 @@ impl CostGrid for TestGrid {
 fn grid_from_strings(strings: &Vec<&str>, ordinal_multiplier: u32) -> (TestGrid, Coord, Coord) {
     let width = strings[0].len() as u32;
     let height = strings.len() as u32;
-    let mut grid = Grid::new_copy(width, height, Some(1));
+    let size = Size::new(width, height);
+    let mut grid = Grid::new_copy(size, Some(1));
     let mut start = None;
     let mut goal = None;
     for (i, line) in strings.into_iter().enumerate() {
@@ -109,7 +107,7 @@ fn common_test(
     cost: u32,
 ) {
     let (grid, start, goal) = grid_from_strings(strings, ordinal_multiplier);
-    let mut ctx = SearchContext::new(grid.width(), grid.height());
+    let mut ctx = SearchContext::new(grid.size());
 
     let check_result = |path: &Vec<_>, metadata: SearchMetadata| {
         assert_eq!(path.len(), length);
@@ -169,7 +167,7 @@ fn common_test(
         let with_heuristic = check_result(&path, metadata);
 
         let jps = if grid_weights == Uniform {
-            let mut jps_ctx: SearchContext<f64> = SearchContext::new(grid.width(), grid.height());
+            let mut jps_ctx: SearchContext<f64> = SearchContext::new(grid.size());
             let metadata = jps_ctx
                 .jump_point_search_octile_distance_heuristic(&grid, start, goal, &mut path)
                 .unwrap();
@@ -275,7 +273,7 @@ fn no_path() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
-    let mut ctx = SearchContext::new(grid.width(), grid.height());
+    let mut ctx = SearchContext::new(grid.size());
     let mut path = Vec::new();
     let result = ctx.dijkstra(&grid, start, goal, Directions, &mut path);
 
@@ -318,7 +316,7 @@ fn goal_is_solid() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
-    let mut ctx = SearchContext::new(grid.width(), grid.height());
+    let mut ctx = SearchContext::new(grid.size());
     let mut path = Vec::new();
     let result = ctx.dijkstra(&grid, start, goal, Directions, &mut path);
 
@@ -341,7 +339,7 @@ fn start_is_solid() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
-    let mut ctx = SearchContext::new(grid.width(), grid.height());
+    let mut ctx = SearchContext::new(grid.size());
     let mut path = Vec::new();
     let result = ctx.dijkstra(&grid, start, goal, Directions, &mut path);
 
@@ -367,7 +365,7 @@ fn start_outside_grid() {
 
     let start = Coord::new(-1, -1);
 
-    let mut ctx = SearchContext::new(grid.width(), grid.height());
+    let mut ctx = SearchContext::new(grid.size());
     let mut path = Vec::new();
     let result = ctx.dijkstra(&grid, start, goal, Directions, &mut path);
 
@@ -405,7 +403,7 @@ fn jps() {
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
 
-    let mut ctx: SearchContext<f32> = SearchContext::new(grid.width(), grid.height());
+    let mut ctx: SearchContext<f32> = SearchContext::new(grid.size());
     let mut path = Vec::new();
     ctx.jump_point_search_octile_distance_heuristic(&grid, start, goal, &mut path)
         .unwrap();
@@ -429,7 +427,7 @@ fn cardinal_jps() {
 
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
 
-    let mut ctx: SearchContext<u32> = SearchContext::new(grid.width(), grid.height());
+    let mut ctx: SearchContext<u32> = SearchContext::new(grid.size());
     let mut path = Vec::new();
     ctx.jump_point_search_cardinal_manhatten_distance_heuristic(&grid, start, goal, &mut path)
         .unwrap();
@@ -442,8 +440,8 @@ fn dijkstra_map() {
 
     let (grid, start, _) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
 
-    let mut ctx: SearchContext<u32> = SearchContext::new(grid.width(), grid.height());
-    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.width(), ctx.height());
+    let mut ctx: SearchContext<u32> = SearchContext::new(grid.size());
+    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
 
     let result = ctx.populate_dijkstra_map(&grid, start, Directions, &mut dijkstra_map)
         .unwrap();
@@ -480,8 +478,8 @@ fn dijkstra_map_weights() {
 
     let (grid, start, _) = grid_from_strings(&strings, 20);
 
-    let mut ctx: SearchContext<u32> = SearchContext::new(grid.width(), grid.height());
-    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.width(), ctx.height());
+    let mut ctx: SearchContext<u32> = SearchContext::new(grid.size());
+    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
 
     ctx.populate_dijkstra_map(&grid, start, Directions, &mut dijkstra_map)
         .unwrap();

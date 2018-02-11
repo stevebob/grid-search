@@ -9,7 +9,8 @@ use error::*;
 fn grid_from_strings(strings: &Vec<&str>) -> (Grid<bool>, Coord, Coord) {
     let width = strings[0].len() as u32;
     let height = strings.len() as u32;
-    let mut grid = Grid::new_copy(width, height, false);
+    let size = Size::new(width, height);
+    let mut grid = Grid::new_copy(size, false);
     let mut start = None;
     let mut goal = None;
     for (i, line) in strings.into_iter().enumerate() {
@@ -52,7 +53,7 @@ where
     D: Copy + IntoIterator<Item = V>,
 {
     let (grid, start, goal) = grid_from_strings(strings);
-    let mut ctx = BfsContext::new(grid.width(), grid.height());
+    let mut ctx = BfsContext::new(grid.size());
     let mut path = Vec::new();
     let metadata = ctx.bfs(&grid, start, goal, directions, &mut path).unwrap();
 
@@ -104,7 +105,7 @@ fn no_path() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings);
-    let mut ctx = BfsContext::new(grid.width(), grid.height());
+    let mut ctx = BfsContext::new(grid.size());
     let mut path = Vec::new();
     let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
 
@@ -140,7 +141,7 @@ fn goal_is_solid() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings);
-    let mut ctx = BfsContext::new(grid.width(), grid.height());
+    let mut ctx = BfsContext::new(grid.size());
     let mut path = Vec::new();
     let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
 
@@ -163,7 +164,7 @@ fn start_is_solid() {
     ];
 
     let (grid, start, goal) = grid_from_strings(&strings);
-    let mut ctx = BfsContext::new(grid.width(), grid.height());
+    let mut ctx = BfsContext::new(grid.size());
     let mut path = Vec::new();
     let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
 
@@ -189,7 +190,7 @@ fn start_outside_grid() {
 
     let start = Coord::new(-1, -1);
 
-    let mut ctx = BfsContext::new(grid.width(), grid.height());
+    let mut ctx = BfsContext::new(grid.size());
     let mut path = Vec::new();
     let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
 
@@ -202,8 +203,8 @@ fn dijkstra_map() {
 
     let (grid, start, _) = grid_from_strings(&strings);
 
-    let mut ctx = BfsContext::new(grid.width(), grid.height());
-    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.width(), ctx.height());
+    let mut ctx = BfsContext::new(grid.size());
+    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
 
     let result = ctx.populate_dijkstra_map(&grid, start, Directions, &mut dijkstra_map)
         .unwrap();
@@ -240,8 +241,8 @@ fn dijkstra_map_cardinal() {
 
     let (grid, start, _) = grid_from_strings(&strings);
 
-    let mut ctx = BfsContext::new(grid.width(), grid.height());
-    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.width(), ctx.height());
+    let mut ctx = BfsContext::new(grid.size());
+    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
 
     let result = ctx.populate_dijkstra_map(&grid, start, CardinalDirections, &mut dijkstra_map)
         .unwrap();

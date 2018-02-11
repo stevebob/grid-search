@@ -81,12 +81,24 @@ impl<Cost> DijkstraMap<Cost>
 where
     Cost: Zero + Copy,
 {
-    pub fn new(width: u32, height: u32) -> Self {
+    pub fn new(size: Size) -> Self {
         Self {
             seq: 1,
-            grid: Grid::new_from_fn(width, height, DijkstraMapCell::new),
+            grid: Grid::new_from_fn(size, DijkstraMapCell::new),
             origin: Coord::new(0, 0),
         }
+    }
+
+    pub fn width(&self) -> u32 {
+        self.grid.width()
+    }
+
+    pub fn height(&self) -> u32 {
+        self.grid.height()
+    }
+
+    pub fn size(&self) -> Size {
+        self.grid.size()
     }
 
     pub fn get(&self, coord: Coord) -> DijkstraMapEntry<Cost> {

@@ -1,7 +1,6 @@
 use std::ops::*;
 use num::traits::*;
 use direction::*;
-use grid_2d::*;
 use metadata::*;
 use search::*;
 use error::*;

@@ -43,10 +43,10 @@ pub struct BfsContext {
 }
 
 impl BfsContext {
-    pub fn new(width: u32, height: u32) -> Self {
+    pub fn new(size: Size) -> Self {
         Self {
             seq: 0,
-            node_grid: Grid::new_from_coord(width, height),
+            node_grid: Grid::new_from_coord(size),
             queue: VecDeque::new(),
         }
     }
@@ -57,6 +57,10 @@ impl BfsContext {
 
     pub fn height(&self) -> u32 {
         self.node_grid.height()
+    }
+
+    pub fn size(&self) -> Size {
+        self.node_grid.size()
     }
 
     pub fn bfs<G, V, D>(

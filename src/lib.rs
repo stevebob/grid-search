@@ -28,5 +28,7 @@ pub use error::*;
 pub use metadata::*;
 pub use dijkstra_map::*;
 
+pub use grid_2d::{Size, Coord};
+
 #[cfg(test)]
 mod tests;
