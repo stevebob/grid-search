@@ -4,6 +4,7 @@ use direction::*;
 use grid::*;
 use error::*;
 use metadata::*;
+use config::*;
 use search::*;
 use path;
 
@@ -116,12 +117,13 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero + One> SearchCon
         grid: &G,
         start: Coord,
         goal: Coord,
+        config: SearchConfig,
         path: &mut Vec<Direction>,
-    ) -> Result<SearchMetadata, Error>
+    ) -> Result<SearchMetadata<Cost>, Error>
     where
         G: SolidGrid,
     {
-        let initial_entry = match self.init(start, goal, grid, path) {
+        let initial_entry = match self.init(start, goal, grid, config, path) {
             Ok(initial_entry) => initial_entry,
             Err(result) => return result,
         };
@@ -140,8 +142,13 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero + One> SearchCon
             num_nodes_visited += 1;
 
             if current_entry.node_index == goal_index {
+                let node = &self.node_grid[goal_index];
                 path::make_path_jump_points(&self.node_grid, goal, self.seq, path);
-                return Ok(SearchMetadata { num_nodes_visited });
+                return Ok(SearchMetadata {
+                    num_nodes_visited,
+                    length: path.len(),
+                    cost: node.cost,
+                });
             }
 
             let (current_coord, current_cost, direction) = {

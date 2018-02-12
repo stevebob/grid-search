@@ -4,6 +4,7 @@ use direction::*;
 use grid::*;
 use error::*;
 use metadata::*;
+use config::*;
 use search::*;
 
 fn manhatten_distance(a: Coord, b: Coord) -> i32 {
@@ -37,15 +38,16 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> SearchContext<C
         grid: &G,
         start: Coord,
         goal: Coord,
+        config: SearchConfig,
         path: &mut Vec<Direction>,
-    ) -> Result<SearchMetadata, Error>
+    ) -> Result<SearchMetadata<Cost>, Error>
     where
         G: CostGrid<Cost = Cost>,
     {
         let heuristic_fn =
             |a, b| NumCast::from(manhatten_distance(a, b)).expect("Failed to cast to Cost");
 
-        self.search_general(grid, start, goal, DirectionsCardinal, heuristic_fn, path)
+        self.search_general(grid, start, goal, DirectionsCardinal, heuristic_fn, config, path)
     }
 }
 
@@ -76,12 +78,13 @@ where
         start: Coord,
         goal: Coord,
         weights: HeuristicDirectionWeights<Cost>,
+        config: SearchConfig,
         path: &mut Vec<Direction>,
-    ) -> Result<SearchMetadata, Error>
+    ) -> Result<SearchMetadata<Cost>, Error>
     where
         G: CostGrid<Cost = Cost>,
     {
         let heuristic_fn = |a, b| diagonal_distance(a, b, &weights);
-        self.search_general(grid, start, goal, Directions, heuristic_fn, path)
+        self.search_general(grid, start, goal, Directions, heuristic_fn, config, path)
     }
 }

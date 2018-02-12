@@ -6,7 +6,7 @@ use search::*;
 use dijkstra_map::*;
 use astar::*;
 use error::*;
-use metadata::*;
+use config::*;
 
 const DEFAULT_ORDINAL_MULTIPLIER: u32 = 2;
 
@@ -109,7 +109,7 @@ fn common_test(
     let (grid, start, goal) = grid_from_strings(strings, ordinal_multiplier);
     let mut ctx = SearchContext::new(grid.size());
 
-    let check_result = |path: &Vec<_>, metadata: SearchMetadata| {
+    let check_result = |path: &Vec<_>| {
         assert_eq!(path.len(), length);
 
         let walk = PathWalk::new(start, &path);
@@ -125,53 +125,59 @@ fn common_test(
 
         assert_eq!(should_be_goal, goal);
         assert_eq!(total_cost, cost);
-
-        metadata.num_nodes_visited
     };
 
     let mut path = Vec::new();
 
     let (with_heuristic, without_heuristic, jps) = if which_directions == Cardinal {
-        let metadata = ctx.dijkstra(&grid, start, goal, DirectionsCardinal, &mut path)
+        let metadata = ctx.dijkstra(&grid, start, goal, DirectionsCardinal, Default::default(), &mut path)
             .unwrap();
-        let without_heuristic = check_result(&path, metadata);
+
+        let without_heuristic = metadata.num_nodes_visited;
+        check_result(&path);
 
         let metadata =
-            ctx.astar_cardinal_manhatten_distance_heuristic(&grid, start, goal, &mut path)
+            ctx.astar_cardinal_manhatten_distance_heuristic(&grid, start, goal, Default::default(), &mut path)
                 .unwrap();
-        let with_heuristic = check_result(&path, metadata);
+        let with_heuristic = metadata.num_nodes_visited;
+        check_result(&path);
 
         let jps = if grid_weights == Uniform {
             let metadata = ctx.jump_point_search_cardinal_manhatten_distance_heuristic(
                 &grid,
                 start,
                 goal,
+                Default::default(),
                 &mut path,
             ).unwrap();
-            Some(check_result(&path, metadata))
+            check_result(&path);
+            Some(metadata.num_nodes_visited)
         } else {
             None
         };
 
         (with_heuristic, without_heuristic, jps)
     } else {
-        let metadata = ctx.dijkstra(&grid, start, goal, Directions, &mut path)
+        let metadata = ctx.dijkstra(&grid, start, goal, Directions, Default::default(), &mut path)
             .unwrap();
-        let without_heuristic = check_result(&path, metadata);
+        check_result(&path);
+        let without_heuristic = metadata.num_nodes_visited;
 
         let weights = HeuristicDirectionWeights::new(1, ordinal_multiplier);
 
         let metadata =
-            ctx.astar_diagonal_distance_heuristic(&grid, start, goal, weights, &mut path)
+            ctx.astar_diagonal_distance_heuristic(&grid, start, goal, weights, Default::default(), &mut path)
                 .unwrap();
-        let with_heuristic = check_result(&path, metadata);
+        check_result(&path);
+        let with_heuristic = metadata.num_nodes_visited;
 
         let jps = if grid_weights == Uniform {
             let mut jps_ctx: SearchContext<f64> = SearchContext::new(grid.size());
             let metadata = jps_ctx
-                .jump_point_search_octile_distance_heuristic(&grid, start, goal, &mut path)
+                .jump_point_search_octile_distance_heuristic(&grid, start, goal, Default::default(), &mut path)
                 .unwrap();
-            Some(check_result(&path, metadata))
+            check_result(&path);
+            Some(metadata.num_nodes_visited)
         } else {
             None
         };
@@ -275,7 +281,7 @@ fn no_path() {
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
     let mut ctx = SearchContext::new(grid.size());
     let mut path = Vec::new();
-    let result = ctx.dijkstra(&grid, start, goal, Directions, &mut path);
+    let result = ctx.dijkstra(&grid, start, goal, Directions, Default::default(), &mut path);
 
     assert_eq!(result, Err(Error::NoPath));
 }
@@ -318,7 +324,7 @@ fn goal_is_solid() {
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
     let mut ctx = SearchContext::new(grid.size());
     let mut path = Vec::new();
-    let result = ctx.dijkstra(&grid, start, goal, Directions, &mut path);
+    let result = ctx.dijkstra(&grid, start, goal, Directions, Default::default(), &mut path);
 
     assert_eq!(result, Err(Error::NoPath));
 }
@@ -341,7 +347,7 @@ fn start_is_solid() {
     let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
     let mut ctx = SearchContext::new(grid.size());
     let mut path = Vec::new();
-    let result = ctx.dijkstra(&grid, start, goal, Directions, &mut path);
+    let result = ctx.dijkstra(&grid, start, goal, Directions, SearchConfig { allow_solid_start: false }, &mut path);
 
     assert_eq!(result, Err(Error::StartSolid));
 }
@@ -367,7 +373,7 @@ fn start_outside_grid() {
 
     let mut ctx = SearchContext::new(grid.size());
     let mut path = Vec::new();
-    let result = ctx.dijkstra(&grid, start, goal, Directions, &mut path);
+    let result = ctx.dijkstra(&grid, start, goal, Directions, Default::default(), &mut path);
 
     assert_eq!(result, Err(Error::StartOutsideGrid));
 }
@@ -405,7 +411,7 @@ fn jps() {
 
     let mut ctx: SearchContext<f32> = SearchContext::new(grid.size());
     let mut path = Vec::new();
-    ctx.jump_point_search_octile_distance_heuristic(&grid, start, goal, &mut path)
+    ctx.jump_point_search_octile_distance_heuristic(&grid, start, goal, Default::default(), &mut path)
         .unwrap();
     assert_eq!(path.len(), 11);
 }
@@ -429,7 +435,7 @@ fn cardinal_jps() {
 
     let mut ctx: SearchContext<u32> = SearchContext::new(grid.size());
     let mut path = Vec::new();
-    ctx.jump_point_search_cardinal_manhatten_distance_heuristic(&grid, start, goal, &mut path)
+    ctx.jump_point_search_cardinal_manhatten_distance_heuristic(&grid, start, goal, Default::default(), &mut path)
         .unwrap();
     assert_eq!(path.len(), 18);
 }
@@ -443,7 +449,7 @@ fn dijkstra_map() {
     let mut ctx: SearchContext<u32> = SearchContext::new(grid.size());
     let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
 
-    let result = ctx.populate_dijkstra_map(&grid, start, Directions, &mut dijkstra_map)
+    let result = ctx.populate_dijkstra_map(&grid, start, Directions, Default::default(), &mut dijkstra_map)
         .unwrap();
 
     assert_eq!(result.num_nodes_visited, 10);
@@ -481,7 +487,7 @@ fn dijkstra_map_weights() {
     let mut ctx: SearchContext<u32> = SearchContext::new(grid.size());
     let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
 
-    ctx.populate_dijkstra_map(&grid, start, Directions, &mut dijkstra_map)
+    ctx.populate_dijkstra_map(&grid, start, Directions, Default::default(), &mut dijkstra_map)
         .unwrap();
 
     assert_eq!(dijkstra_map.get(Coord::new(0, 0)).cell().unwrap().cost(), 2);

@@ -5,6 +5,7 @@ use path::PathWalk;
 use bfs::*;
 use dijkstra_map::*;
 use error::*;
+use config::*;
 
 fn grid_from_strings(strings: &Vec<&str>) -> (Grid<bool>, Coord, Coord) {
     let width = strings[0].len() as u32;
@@ -55,7 +56,7 @@ where
     let (grid, start, goal) = grid_from_strings(strings);
     let mut ctx = BfsContext::new(grid.size());
     let mut path = Vec::new();
-    let metadata = ctx.bfs(&grid, start, goal, directions, &mut path).unwrap();
+    let metadata = ctx.bfs(&grid, start, goal, directions, Default::default(), &mut path).unwrap();
 
     println!("{:?}", metadata);
 
@@ -107,7 +108,7 @@ fn no_path() {
     let (grid, start, goal) = grid_from_strings(&strings);
     let mut ctx = BfsContext::new(grid.size());
     let mut path = Vec::new();
-    let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
+    let result = ctx.bfs(&grid, start, goal, Directions, Default::default(), &mut path);
 
     assert_eq!(result, Err(Error::NoPath));
 }
@@ -143,7 +144,7 @@ fn goal_is_solid() {
     let (grid, start, goal) = grid_from_strings(&strings);
     let mut ctx = BfsContext::new(grid.size());
     let mut path = Vec::new();
-    let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
+    let result = ctx.bfs(&grid, start, goal, Directions, Default::default(), &mut path);
 
     assert_eq!(result, Err(Error::NoPath));
 }
@@ -166,7 +167,7 @@ fn start_is_solid() {
     let (grid, start, goal) = grid_from_strings(&strings);
     let mut ctx = BfsContext::new(grid.size());
     let mut path = Vec::new();
-    let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
+    let result = ctx.bfs(&grid, start, goal, Directions, SearchConfig { allow_solid_start: false }, &mut path);
 
     assert_eq!(result, Err(Error::StartSolid));
 }
@@ -192,7 +193,7 @@ fn start_outside_grid() {
 
     let mut ctx = BfsContext::new(grid.size());
     let mut path = Vec::new();
-    let result = ctx.bfs(&grid, start, goal, Directions, &mut path);
+    let result = ctx.bfs(&grid, start, goal, Directions, Default::default(), &mut path);
 
     assert_eq!(result, Err(Error::StartOutsideGrid));
 }
@@ -206,7 +207,7 @@ fn dijkstra_map() {
     let mut ctx = BfsContext::new(grid.size());
     let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
 
-    let result = ctx.populate_dijkstra_map(&grid, start, Directions, &mut dijkstra_map)
+    let result = ctx.populate_dijkstra_map(&grid, start, Directions, Default::default(), &mut dijkstra_map)
         .unwrap();
 
     assert_eq!(result.num_nodes_visited, 10);
@@ -244,7 +245,7 @@ fn dijkstra_map_cardinal() {
     let mut ctx = BfsContext::new(grid.size());
     let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
 
-    let result = ctx.populate_dijkstra_map(&grid, start, CardinalDirections, &mut dijkstra_map)
+    let result = ctx.populate_dijkstra_map(&grid, start, CardinalDirections, Default::default(), &mut dijkstra_map)
         .unwrap();
 
     assert_eq!(result.num_nodes_visited, 11);

@@ -6,6 +6,7 @@ use grid::SolidGrid;
 use grid_2d::*;
 use error::*;
 use metadata::*;
+use config::*;
 use path::{self, PathNode};
 use dijkstra_map::*;
 
@@ -69,15 +70,16 @@ impl BfsContext {
         start: Coord,
         goal: Coord,
         directions: D,
+        config: SearchConfig,
         path: &mut Vec<Direction>,
-    ) -> Result<SearchMetadata, Error>
+    ) -> Result<SearchMetadata<usize>, Error>
     where
         G: SolidGrid,
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
     {
         if let Some(solid) = grid.is_solid(start) {
-            if solid {
+            if solid && !config.allow_solid_start {
                 return Err(Error::StartSolid);
             }
 
@@ -87,7 +89,11 @@ impl BfsContext {
 
             if start == goal {
                 path.clear();
-                return Ok(Default::default());
+                return Ok(SearchMetadata {
+                    num_nodes_visited: 0,
+                    cost: Zero::zero(),
+                    length: 0,
+                });
             }
 
             self.seq += 1;
@@ -132,7 +138,12 @@ impl BfsContext {
 
                 if neighbour_coord == goal {
                     path::make_path_all_adjacent(&self.node_grid, index, path);
-                    return Ok(SearchMetadata { num_nodes_visited });
+                    let length = path.len();
+                    return Ok(SearchMetadata {
+                        num_nodes_visited,
+                        length,
+                        cost: length,
+                    });
                 }
             }
         }
@@ -145,8 +156,9 @@ impl BfsContext {
         grid: &G,
         start: Coord,
         directions: D,
+        config: SearchConfig,
         dijkstra_map: &mut DijkstraMap<C>,
-    ) -> Result<SearchMetadata, Error>
+    ) -> Result<DijkstraMapMetadata, Error>
     where
         G: SolidGrid,
         V: Into<Direction>,
@@ -154,7 +166,7 @@ impl BfsContext {
         C: Copy + Zero + One + Add<C>,
     {
         if let Some(solid) = grid.is_solid(start) {
-            if solid {
+            if solid && !config.allow_solid_start {
                 return Err(Error::StartSolid);
             }
 
@@ -210,6 +222,6 @@ impl BfsContext {
             }
         }
 
-        Ok(SearchMetadata { num_nodes_visited })
+        Ok(DijkstraMapMetadata { num_nodes_visited })
     }
 }

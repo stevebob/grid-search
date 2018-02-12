@@ -7,6 +7,7 @@ use grid_2d::*;
 use grid::*;
 use error::*;
 use metadata::*;
+use config::*;
 use path::{self, PathNode};
 use dijkstra_map::*;
 
@@ -107,8 +108,9 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         start: Coord,
         goal: Coord,
         grid: &G,
+        config: SearchConfig,
         path: &mut Vec<Direction>,
-    ) -> Result<PriorityEntry<Cost>, Result<SearchMetadata, Error>>
+    ) -> Result<PriorityEntry<Cost>, Result<SearchMetadata<Cost>, Error>>
     where
         G: SolidGrid,
     {
@@ -119,13 +121,17 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
                 return Err(Err(Error::VisitOutsideContext));
             };
 
-            if solid {
+            if solid && !config.allow_solid_start {
                 return Err(Err(Error::StartSolid));
             };
 
             if start == goal {
                 path.clear();
-                return Err(Ok(Default::default()));
+                return Err(Ok(SearchMetadata {
+                    num_nodes_visited: 0,
+                    cost: Zero::zero(),
+                    length: 0,
+                }));
             }
 
             self.seq += 1;
@@ -149,15 +155,16 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         goal: Coord,
         directions: D,
         heuristic_fn: H,
+        config: SearchConfig,
         path: &mut Vec<Direction>,
-    ) -> Result<SearchMetadata, Error>
+    ) -> Result<SearchMetadata<Cost>, Error>
     where
         G: CostGrid<Cost = Cost>,
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
         H: Fn(Coord, Coord) -> Cost,
     {
-        let initial_entry = match self.init(start, goal, grid, path) {
+        let initial_entry = match self.init(start, goal, grid, config, path) {
             Ok(initial_entry) => initial_entry,
             Err(result) => return result,
         };
@@ -174,8 +181,14 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
             num_nodes_visited += 1;
 
             if current_entry.node_index == goal_index {
+                let node = &self.node_grid[goal_index];
+
                 path::make_path_all_adjacent(&self.node_grid, goal_index, path);
-                return Ok(SearchMetadata { num_nodes_visited });
+                return Ok(SearchMetadata {
+                    num_nodes_visited,
+                    cost: node.cost,
+                    length: path.len(),
+                });
             }
 
             let (current_coord, current_cost) = {
@@ -248,15 +261,16 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
         grid: &G,
         start: Coord,
         directions: D,
+        config: SearchConfig,
         dijkstra_map: &mut DijkstraMap<Cost>,
-    ) -> Result<SearchMetadata, Error>
+    ) -> Result<DijkstraMapMetadata, Error>
     where
         G: CostGrid<Cost = Cost>,
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
     {
         if let Some(solid) = grid.is_solid(start) {
-            if solid {
+            if solid && !config.allow_solid_start {
                 return Err(Error::StartSolid);
             };
 
@@ -323,6 +337,6 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
             }
         }
 
-        Ok(SearchMetadata { num_nodes_visited })
+        Ok(DijkstraMapMetadata { num_nodes_visited })
     }
 }

@@ -2,6 +2,7 @@ use std::ops::*;
 use num::traits::*;
 use direction::*;
 use metadata::*;
+use config::*;
 use search::*;
 use error::*;
 use grid::*;
@@ -209,12 +210,13 @@ where
         grid: &G,
         start: Coord,
         goal: Coord,
+        config: SearchConfig,
         path: &mut Vec<Direction>,
-    ) -> Result<SearchMetadata, Error>
+    ) -> Result<SearchMetadata<C>, Error>
     where
         G: SolidGrid,
     {
-        let initial_entry = match self.init(start, goal, grid, path) {
+        let initial_entry = match self.init(start, goal, grid, config, path) {
             Ok(initial_entry) => initial_entry,
             Err(result) => return result,
         };
@@ -233,8 +235,13 @@ where
             num_nodes_visited += 1;
 
             if current_entry.node_index == goal_index {
+                let node = &self.node_grid[goal_index];
                 path::make_path_jump_points(&self.node_grid, goal, self.seq, path);
-                return Ok(SearchMetadata { num_nodes_visited });
+                return Ok(SearchMetadata {
+                    num_nodes_visited,
+                    cost: node.cost,
+                    length: path.len(),
+                });
             }
 
             let (current_coord, current_cost, direction) = {
