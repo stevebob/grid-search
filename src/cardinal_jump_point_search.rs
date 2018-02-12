@@ -93,7 +93,8 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero + One> SearchCon
         current_cost: Cost,
         direction: CardinalDirection,
         goal: Coord,
-    ) where
+    ) -> Result<(), Error>
+    where
         G: SolidGrid,
     {
         if let Some((successor_coord, successor_cost)) = jump(grid, current_coord, direction, goal)
@@ -104,8 +105,10 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero + One> SearchCon
                 direction.direction(),
                 manhatten_distance,
                 goal,
-            );
+            )?;
         }
+
+        Ok(())
     }
 
     pub fn jump_point_search_cardinal_manhatten_distance_heuristic<G>(
@@ -125,10 +128,10 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero + One> SearchCon
 
         let goal_index = self.node_grid
             .coord_to_index(goal)
-            .expect("SearchContext too small for grid");
+            .ok_or(Error::VisitOutsideContext)?;
 
         for direction in CardinalDirections {
-            self.expand(grid, start, initial_entry.cost, direction, goal);
+            self.expand(grid, start, initial_entry.cost, direction, goal)?;
         }
 
         let mut num_nodes_visited = 0;
@@ -154,9 +157,9 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero + One> SearchCon
                 (node.coord, node.cost, direction)
             };
 
-            self.expand(grid, current_coord, current_cost, direction, goal);
-            self.expand(grid, current_coord, current_cost, direction.left90(), goal);
-            self.expand(grid, current_coord, current_cost, direction.right90(), goal);
+            self.expand(grid, current_coord, current_cost, direction, goal)?;
+            self.expand(grid, current_coord, current_cost, direction.left90(), goal)?;
+            self.expand(grid, current_coord, current_cost, direction.right90(), goal)?;
         }
 
         Err(Error::NoPath)

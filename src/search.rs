@@ -113,9 +113,11 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         G: SolidGrid,
     {
         if let Some(solid) = grid.is_solid(start) {
-            let index = self.node_grid
-                .coord_to_index(start)
-                .expect("SearchContext too small for grid");
+            let index = if let Some(index) = self.node_grid.coord_to_index(start) {
+                index
+            } else {
+                return Err(Err(Error::VisitOutsideContext));
+            };
 
             if solid {
                 return Err(Err(Error::StartSolid));
@@ -164,7 +166,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
 
         let goal_index = self.node_grid
             .coord_to_index(goal)
-            .expect("SearchContext too small for grid");
+            .ok_or(Error::VisitOutsideContext)?;
 
         let mut num_nodes_visited = 0;
 
@@ -202,7 +204,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
                     direction,
                     &heuristic_fn,
                     goal,
-                );
+                )?;
             }
         }
 
@@ -216,12 +218,13 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         direction: Direction,
         heuristic_fn: H,
         goal: Coord,
-    ) where
+    ) -> Result<(), Error>
+    where
         H: Fn(Coord, Coord) -> Cost,
     {
         let index = self.node_grid
             .coord_to_index(successor_coord)
-            .expect("SearchContext too small for grid");
+            .ok_or(Error::VisitOutsideContext)?;
 
         let node = &mut self.node_grid[index];
 
@@ -234,6 +237,8 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
             let entry = PriorityEntry::new(index, heuristic);
             self.priority_queue.push(entry);
         }
+
+        Ok(())
     }
 }
 
@@ -258,7 +263,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
             let index = dijkstra_map
                 .grid
                 .coord_to_index(start)
-                .expect("SearchContext too small for grid");
+                .ok_or(Error::VisitOutsideDijkstraMap)?;
 
             self.priority_queue.clear();
             self.priority_queue
@@ -303,7 +308,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
                 let index = dijkstra_map
                     .grid
                     .coord_to_index(neighbour_coord)
-                    .expect("SearchContext too small for grid");
+                    .ok_or(Error::VisitOutsideDijkstraMap)?;
 
                 let cell = &mut dijkstra_map.grid[index];
 

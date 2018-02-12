@@ -3,4 +3,6 @@ pub enum Error {
     StartOutsideGrid,
     StartSolid,
     NoPath,
+    VisitOutsideContext,
+    VisitOutsideDijkstraMap,
 }

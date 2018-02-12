@@ -83,7 +83,7 @@ impl BfsContext {
 
             let index = self.node_grid
                 .coord_to_index(start)
-                .expect("BfsContext too small for grid");
+                .ok_or(Error::VisitOutsideContext)?;
 
             if start == goal {
                 path.clear();
@@ -119,7 +119,7 @@ impl BfsContext {
 
                 let index = self.node_grid
                     .coord_to_index(neighbour_coord)
-                    .expect("BfsContext too small for grid");
+                    .ok_or(Error::VisitOutsideContext)?;
 
                 {
                     let node = &mut self.node_grid[index];
@@ -161,7 +161,7 @@ impl BfsContext {
             let index = dijkstra_map
                 .grid
                 .coord_to_index(start)
-                .expect("BfsContext too small for grid");
+                .ok_or(Error::VisitOutsideDijkstraMap)?;
 
             self.queue.clear();
             self.queue.push_back(index);
@@ -198,7 +198,7 @@ impl BfsContext {
                 let index = dijkstra_map
                     .grid
                     .coord_to_index(neighbour_coord)
-                    .expect("BfsContext too small for grid");
+                    .ok_or(Error::VisitOutsideDijkstraMap)?;
 
                 let cell = &mut dijkstra_map.grid[index];
                 if cell.seen != dijkstra_map.seq {

@@ -9,7 +9,7 @@ use path;
 
 fn octile_distance<C>(a: Coord, b: Coord) -> C
 where
-    C: Add<C, Output = C> + Mul<C, Output = C> + FloatConst + NumCast
+    C: Add<C, Output = C> + Mul<C, Output = C> + FloatConst + NumCast,
 {
     let dx = (a.x - b.x).abs();
     let dy = (a.y - b.y).abs();
@@ -122,7 +122,14 @@ where
 
 impl<C> SearchContext<C>
 where
-    C: Copy + Zero + One + Add<C, Output = C> + Mul<C, Output = C> + FloatConst + NumCast + PartialOrd<C>,
+    C: Copy
+        + Zero
+        + One
+        + Add<C, Output = C>
+        + Mul<C, Output = C>
+        + FloatConst
+        + NumCast
+        + PartialOrd<C>,
 {
     fn expand_cardinal<G>(
         &mut self,
@@ -131,7 +138,8 @@ where
         current_cost: C,
         direction: CardinalDirection,
         goal: Coord,
-    ) where
+    ) -> Result<(), Error>
+    where
         G: SolidGrid,
     {
         if let Some((successor_coord, successor_cost)) =
@@ -143,8 +151,10 @@ where
                 direction.direction(),
                 octile_distance,
                 goal,
-            );
+            )?;
         }
+
+        Ok(())
     }
 
     fn expand_ordinal<G>(
@@ -154,7 +164,8 @@ where
         current_cost: C,
         direction: OrdinalDirection,
         goal: Coord,
-    ) where
+    ) -> Result<(), Error>
+    where
         G: SolidGrid,
     {
         if let Some((successor_coord, successor_cost)) =
@@ -166,8 +177,10 @@ where
                 direction.direction(),
                 octile_distance,
                 goal,
-            );
+            )?;
         }
+
+        Ok(())
     }
 
     fn expand_general<G>(
@@ -177,7 +190,8 @@ where
         current_cost: C,
         direction: Direction,
         goal: Coord,
-    ) where
+    ) -> Result<(), Error>
+    where
         G: SolidGrid,
     {
         match direction.typ() {
@@ -207,10 +221,10 @@ where
 
         let goal_index = self.node_grid
             .coord_to_index(goal)
-            .expect("SearchContext too small for grid");
+            .ok_or(Error::VisitOutsideContext)?;
 
         for direction in Directions {
-            self.expand_general(grid, start, initial_entry.cost, direction, goal);
+            self.expand_general(grid, start, initial_entry.cost, direction, goal)?;
         }
 
         let mut num_nodes_visited = 0;
@@ -235,7 +249,7 @@ where
 
             match direction.typ() {
                 DirectionType::Cardinal(direction) => {
-                    self.expand_cardinal(grid, current_coord, current_cost, direction, goal);
+                    self.expand_cardinal(grid, current_coord, current_cost, direction, goal)?;
                     let left = direction.left90();
                     if grid.is_solid_or_outside(current_coord + left.coord()) {
                         self.expand_ordinal(
@@ -244,7 +258,7 @@ where
                             current_cost,
                             direction.left45(),
                             goal,
-                        );
+                        )?;
                     }
                     let right = direction.right90();
                     if grid.is_solid_or_outside(current_coord + right.coord()) {
@@ -254,14 +268,14 @@ where
                             current_cost,
                             direction.right45(),
                             goal,
-                        );
+                        )?;
                     }
                 }
                 DirectionType::Ordinal(direction) => {
-                    self.expand_ordinal(grid, current_coord, current_cost, direction, goal);
+                    self.expand_ordinal(grid, current_coord, current_cost, direction, goal)?;
                     let (left, right) = direction.to_cardinals();
-                    self.expand_cardinal(grid, current_coord, current_cost, left, goal);
-                    self.expand_cardinal(grid, current_coord, current_cost, right, goal);
+                    self.expand_cardinal(grid, current_coord, current_cost, left, goal)?;
+                    self.expand_cardinal(grid, current_coord, current_cost, right, goal)?;
 
                     let (check_right, check_left) = direction.opposite().to_cardinals();
 
@@ -272,7 +286,7 @@ where
                             current_cost,
                             direction.left90(),
                             goal,
-                        );
+                        )?;
                     }
                     if grid.is_solid_or_outside(current_coord + check_right.coord()) {
                         self.expand_ordinal(
@@ -281,7 +295,7 @@ where
                             current_cost,
                             direction.right90(),
                             goal,
-                        );
+                        )?;
                     }
                 }
             }
