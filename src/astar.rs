@@ -47,7 +47,15 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> SearchContext<C
         let heuristic_fn =
             |a, b| NumCast::from(manhatten_distance(a, b)).expect("Failed to cast to Cost");
 
-        self.search_general(grid, start, goal, DirectionsCardinal, heuristic_fn, config, path)
+        self.search_general(
+            grid,
+            start,
+            goal,
+            DirectionsCardinal,
+            heuristic_fn,
+            config,
+            path,
+        )
     }
 }
 

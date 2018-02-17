@@ -23,7 +23,15 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
     {
-        self.search_general(grid, start, goal, directions, |_, _| Zero::zero(), config, path)
+        self.search_general(
+            grid,
+            start,
+            goal,
+            directions,
+            |_, _| Zero::zero(),
+            config,
+            path,
+        )
     }
 
     pub fn dijkstra_predicate<G, V, D, F>(
