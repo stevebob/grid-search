@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::ops::Add;
+use best::BestMap;
 use num::traits::{One, Zero};
 use direction::Direction;
 use grid::SolidGrid;
@@ -74,6 +75,103 @@ impl BfsContext {
 
     pub fn size(&self) -> Size {
         self.node_grid.size()
+    }
+
+    pub fn bfs_best<G, V, D, S, F>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        score: F,
+        directions: D,
+        config: BfsConfig,
+        path: &mut Vec<Direction>,
+    ) -> Result<SearchMetadata<usize>, Error>
+    where
+        G: SolidGrid,
+        V: Into<Direction>,
+        D: Copy + IntoIterator<Item = V>,
+        S: PartialOrd,
+        F: Fn(Coord) -> Option<S>,
+    {
+        let mut best_map = BestMap::new();
+
+        if let Some(solid) = grid.is_solid(start) {
+            if solid && !config.allow_solid_start {
+                return Err(Error::StartSolid);
+            }
+
+            let index = self.node_grid
+                .coord_to_index(start)
+                .ok_or(Error::VisitOutsideContext)?;
+
+            if let Some(initial_score) = score(start) {
+                best_map.insert_gt(initial_score, index);
+            }
+
+            self.seq += 1;
+            self.queue.clear();
+
+            let node = &mut self.node_grid[index];
+            node.from_parent = None;
+            node.seen = self.seq;
+            self.queue.push_back(Entry::new(index, 0));
+        } else {
+            return Err(Error::StartOutsideGrid);
+        }
+
+        let mut num_nodes_visited = 0;
+
+        while let Some(current_entry) = self.queue.pop_front() {
+            num_nodes_visited += 1;
+
+            if current_entry.depth >= config.max_depth {
+                continue;
+            }
+
+            let current_coord = self.node_grid[current_entry.index].coord;
+
+            let next_depth = current_entry.depth + 1;
+
+            for v in directions {
+                let direction = v.into();
+                let offset: Coord = direction.into();
+                let neighbour_coord = current_coord + offset;
+
+                if let Some(false) = grid.is_solid(neighbour_coord) {
+                } else {
+                    continue;
+                }
+
+                let index = self.node_grid
+                    .coord_to_index(neighbour_coord)
+                    .ok_or(Error::VisitOutsideContext)?;
+
+                {
+                    let node = &mut self.node_grid[index];
+                    if node.seen != self.seq {
+                        node.seen = self.seq;
+                        node.from_parent = Some(direction);
+                        self.queue.push_back(Entry::new(index, next_depth));
+                    }
+                }
+
+                if let Some(score) = score(neighbour_coord) {
+                    best_map.insert_gt(score, index);
+                }
+            }
+        }
+
+        if let Some(index) = best_map.into_value() {
+            path::make_path_all_adjacent(&self.node_grid, index, path);
+            let length = path.len();
+            Ok(SearchMetadata {
+                num_nodes_visited,
+                length,
+                cost: length,
+            })
+        } else {
+            Err(Error::NoPath)
+        }
     }
 
     pub fn bfs_predicate<G, V, D, F>(

@@ -1,3 +1,4 @@
+extern crate best;
 extern crate direction;
 extern crate grid_2d;
 extern crate num;

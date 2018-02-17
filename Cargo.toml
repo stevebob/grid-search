@@ -12,6 +12,7 @@ documentation = "https://docs.rs/grid_search"
 [dependencies]
 direction = "0.13"
 grid_2d = "0.7"
+best = "0.2"
 num = { version = "0.1", default-features = false }
 serde = "1.0"
 serde_derive = "1.0"

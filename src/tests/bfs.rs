@@ -273,3 +273,39 @@ fn dijkstra_map_cardinal() {
         Direction::East
     );
 }
+
+#[test]
+fn bfs_best() {
+    let strings = vec![
+        "....#.....",
+        "....#.....",
+        "....#.....",
+        "....#.....",
+        ".s..#.....",
+        "....#.....",
+        "....######",
+        "..........",
+        ".......g..",
+        "..........",
+    ];
+
+    let (grid, start, _) = grid_from_strings(&strings);
+
+    let mut ctx = BfsContext::new(grid.size());
+    let mut path = Vec::new();
+
+    let score = |coord: Coord| Some(coord.x + coord.y);
+
+    let metadata = ctx.bfs_best(&grid, start, score, Directions, Default::default(), &mut path).unwrap();
+
+    assert_eq!(metadata.length, 8);
+
+    let walk = PathWalk::new(start, &path);
+
+    let (should_be_bottom_right, _) = walk.inspect(|&(coord, _)| {
+        assert_eq!(grid.is_solid(coord), Some(false));
+    }).last()
+        .unwrap_or((start, Direction::North));
+
+    assert_eq!(should_be_bottom_right, Coord::new(9, 9));
+}
