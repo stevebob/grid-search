@@ -167,7 +167,7 @@ fn start_is_solid() {
     let (grid, start, goal) = grid_from_strings(&strings);
     let mut ctx = BfsContext::new(grid.size());
     let mut path = Vec::new();
-    let result = ctx.bfs(&grid, start, goal, Directions, SearchConfig { allow_solid_start: false }, &mut path);
+    let result = ctx.bfs(&grid, start, goal, Directions, BfsConfig { max_depth: ::std::usize::MAX, allow_solid_start: false }, &mut path);
 
     assert_eq!(result, Err(Error::StartSolid));
 }

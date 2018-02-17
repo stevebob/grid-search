@@ -48,7 +48,7 @@ pub(crate) struct PriorityEntry<Cost: PartialOrd<Cost>> {
 }
 
 impl<Cost: PartialOrd<Cost>> PriorityEntry<Cost> {
-    fn new(node_index: usize, cost: Cost) -> Self {
+    pub(crate) fn new(node_index: usize, cost: Cost) -> Self {
         Self { node_index, cost }
     }
 }
@@ -103,16 +103,17 @@ impl<Cost: PartialOrd<Cost> + Zero> SearchContext<Cost> {
 }
 
 impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
-    pub(crate) fn init<G>(
+    pub(crate) fn init<G, F>(
         &mut self,
         start: Coord,
-        goal: Coord,
+        predicate: F,
         grid: &G,
         config: SearchConfig,
         path: &mut Vec<Direction>,
     ) -> Result<PriorityEntry<Cost>, Result<SearchMetadata<Cost>, Error>>
     where
         G: SolidGrid,
+        F: Fn(Coord) -> bool,
     {
         if let Some(solid) = grid.is_solid(start) {
             let index = if let Some(index) = self.node_grid.coord_to_index(start) {
@@ -125,7 +126,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
                 return Err(Err(Error::StartSolid));
             };
 
-            if start == goal {
+            if predicate(start) {
                 path.clear();
                 return Err(Ok(SearchMetadata {
                     num_nodes_visited: 0,
@@ -164,7 +165,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         D: Copy + IntoIterator<Item = V>,
         H: Fn(Coord, Coord) -> Cost,
     {
-        let initial_entry = match self.init(start, goal, grid, config, path) {
+        let initial_entry = match self.init(start, |c| c == goal, grid, config, path) {
             Ok(initial_entry) => initial_entry,
             Err(result) => return result,
         };

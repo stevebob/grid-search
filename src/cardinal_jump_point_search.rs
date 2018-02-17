@@ -123,7 +123,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero + One> SearchCon
     where
         G: SolidGrid,
     {
-        let initial_entry = match self.init(start, goal, grid, config, path) {
+        let initial_entry = match self.init(start, |c| c == goal, grid, config, path) {
             Ok(initial_entry) => initial_entry,
             Err(result) => return result,
         };

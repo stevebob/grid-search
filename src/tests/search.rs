@@ -492,3 +492,27 @@ fn dijkstra_map_weights() {
 
     assert_eq!(dijkstra_map.get(Coord::new(0, 0)).cell().unwrap().cost(), 2);
 }
+
+#[test]
+fn dijkstra_predicate() {
+    let strings = vec![
+        "....#.....",
+        "....#..g..",
+        "....#.....",
+        "....#.....",
+        ".s..#.....",
+        "....#.....",
+        "....###.##",
+        "..........",
+        "..........",
+        "..........",
+    ];
+
+    let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
+    let mut ctx = SearchContext::new(grid.size());
+    let mut path = Vec::new();
+    let predicate = |c| c == goal;
+    let result = ctx.dijkstra_predicate(&grid, start, predicate, Directions, Default::default(), &mut path);
+
+    println!("{:?}", result);
+}

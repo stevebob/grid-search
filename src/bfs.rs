@@ -37,9 +37,21 @@ impl From<Coord> for BfsNode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+struct Entry {
+    index: usize,
+    depth: usize,
+}
+
+impl Entry {
+    fn new(index: usize, depth: usize) -> Self {
+        Self { index, depth }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BfsContext {
     seq: u64,
-    queue: VecDeque<usize>,
+    queue: VecDeque<Entry>,
     node_grid: Grid<BfsNode>,
 }
 
@@ -64,19 +76,20 @@ impl BfsContext {
         self.node_grid.size()
     }
 
-    pub fn bfs<G, V, D>(
+    pub fn bfs_predicate<G, V, D, F>(
         &mut self,
         grid: &G,
         start: Coord,
-        goal: Coord,
+        predicate: F,
         directions: D,
-        config: SearchConfig,
+        config: BfsConfig,
         path: &mut Vec<Direction>,
     ) -> Result<SearchMetadata<usize>, Error>
     where
         G: SolidGrid,
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
+        F: Fn(Coord) -> bool,
     {
         if let Some(solid) = grid.is_solid(start) {
             if solid && !config.allow_solid_start {
@@ -87,7 +100,7 @@ impl BfsContext {
                 .coord_to_index(start)
                 .ok_or(Error::VisitOutsideContext)?;
 
-            if start == goal {
+            if predicate(start) {
                 path.clear();
                 return Ok(SearchMetadata {
                     num_nodes_visited: 0,
@@ -102,17 +115,24 @@ impl BfsContext {
             let node = &mut self.node_grid[index];
             node.from_parent = None;
             node.seen = self.seq;
-            self.queue.push_back(index);
+            self.queue.push_back(Entry::new(index, 0));
         } else {
             return Err(Error::StartOutsideGrid);
         }
 
         let mut num_nodes_visited = 0;
 
-        while let Some(current_index) = self.queue.pop_front() {
+        while let Some(current_entry) = self.queue.pop_front() {
             num_nodes_visited += 1;
 
-            let current_coord = self.node_grid[current_index].coord;
+            if current_entry.depth >= config.max_depth {
+                continue;
+            }
+
+            let current_coord = self.node_grid[current_entry.index].coord;
+
+            let next_depth = current_entry.depth + 1;
+
             for v in directions {
                 let direction = v.into();
                 let offset: Coord = direction.into();
@@ -132,11 +152,11 @@ impl BfsContext {
                     if node.seen != self.seq {
                         node.seen = self.seq;
                         node.from_parent = Some(direction);
-                        self.queue.push_back(index);
+                        self.queue.push_back(Entry::new(index, next_depth));
                     }
                 }
 
-                if neighbour_coord == goal {
+                if predicate(neighbour_coord) {
                     path::make_path_all_adjacent(&self.node_grid, index, path);
                     let length = path.len();
                     return Ok(SearchMetadata {
@@ -151,12 +171,29 @@ impl BfsContext {
         Err(Error::NoPath)
     }
 
+    pub fn bfs<G, V, D>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        goal: Coord,
+        directions: D,
+        config: BfsConfig,
+        path: &mut Vec<Direction>,
+    ) -> Result<SearchMetadata<usize>, Error>
+    where
+        G: SolidGrid,
+        V: Into<Direction>,
+        D: Copy + IntoIterator<Item = V>,
+    {
+        self.bfs_predicate(grid, start, |c| c == goal, directions, config, path)
+    }
+
     pub fn populate_dijkstra_map<G, V, D, C>(
         &mut self,
         grid: &G,
         start: Coord,
         directions: D,
-        config: SearchConfig,
+        config: BfsConfig,
         dijkstra_map: &mut DijkstraMap<C>,
     ) -> Result<DijkstraMapMetadata, Error>
     where
@@ -176,7 +213,7 @@ impl BfsContext {
                 .ok_or(Error::VisitOutsideDijkstraMap)?;
 
             self.queue.clear();
-            self.queue.push_back(index);
+            self.queue.push_back(Entry::new(index, 0));
 
             dijkstra_map.seq += 1;
             dijkstra_map.origin = start;
@@ -189,11 +226,17 @@ impl BfsContext {
 
         let mut num_nodes_visited = 0;
 
-        while let Some(current_index) = self.queue.pop_front() {
+        while let Some(current_entry) = self.queue.pop_front() {
             num_nodes_visited += 1;
 
+            if current_entry.depth >= config.max_depth {
+                continue;
+            }
+
+            let next_depth = current_entry.depth + 1;
+
             let (current_coord, current_cost) = {
-                let cell = &dijkstra_map.grid[current_index];
+                let cell = &dijkstra_map.grid[current_entry.index];
                 (cell.coord, cell.cost)
             };
 
@@ -217,7 +260,7 @@ impl BfsContext {
                     cell.seen = dijkstra_map.seq;
                     cell.direction = direction.opposite();
                     cell.cost = current_cost + One::one();
-                    self.queue.push_back(index);
+                    self.queue.push_back(Entry::new(index, next_depth));
                 }
             }
         }
