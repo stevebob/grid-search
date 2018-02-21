@@ -263,8 +263,8 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
         start: Coord,
         directions: D,
         config: SearchConfig,
-        distance_map: &mut DijkstraMap<Cost>,
-    ) -> Result<DijkstraMapMetadata, Error>
+        distance_map: &mut DistanceMap<Cost>,
+    ) -> Result<DistanceMapMetadata, Error>
     where
         G: CostGrid<Cost = Cost>,
         V: Into<Direction>,
@@ -278,7 +278,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
             let index = distance_map
                 .grid
                 .coord_to_index(start)
-                .ok_or(Error::VisitOutsideDijkstraMap)?;
+                .ok_or(Error::VisitOutsideDistanceMap)?;
 
             self.priority_queue.clear();
             self.priority_queue
@@ -323,7 +323,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
                 let index = distance_map
                     .grid
                     .coord_to_index(neighbour_coord)
-                    .ok_or(Error::VisitOutsideDijkstraMap)?;
+                    .ok_or(Error::VisitOutsideDistanceMap)?;
 
                 let cell = &mut distance_map.grid[index];
 
@@ -338,6 +338,6 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
             }
         }
 
-        Ok(DijkstraMapMetadata { num_nodes_visited })
+        Ok(DistanceMapMetadata { num_nodes_visited })
     }
 }

@@ -292,8 +292,8 @@ impl BfsContext {
         start: Coord,
         directions: D,
         config: BfsConfig,
-        distance_map: &mut DijkstraMap<C>,
-    ) -> Result<DijkstraMapMetadata, Error>
+        distance_map: &mut DistanceMap<C>,
+    ) -> Result<DistanceMapMetadata, Error>
     where
         G: SolidGrid,
         V: Into<Direction>,
@@ -308,7 +308,7 @@ impl BfsContext {
             let index = distance_map
                 .grid
                 .coord_to_index(start)
-                .ok_or(Error::VisitOutsideDijkstraMap)?;
+                .ok_or(Error::VisitOutsideDistanceMap)?;
 
             self.queue.clear();
             self.queue.push_back(Entry::new(index, 0));
@@ -351,7 +351,7 @@ impl BfsContext {
                 let index = distance_map
                     .grid
                     .coord_to_index(neighbour_coord)
-                    .ok_or(Error::VisitOutsideDijkstraMap)?;
+                    .ok_or(Error::VisitOutsideDistanceMap)?;
 
                 let cell = &mut distance_map.grid[index];
                 if cell.seen != distance_map.seq {
@@ -363,6 +363,6 @@ impl BfsContext {
             }
         }
 
-        Ok(DijkstraMapMetadata { num_nodes_visited })
+        Ok(DistanceMapMetadata { num_nodes_visited })
     }
 }

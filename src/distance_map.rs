@@ -3,7 +3,7 @@ use grid_2d::*;
 use direction::*;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct DijkstraMapCell<Cost> {
+pub struct DistanceMapCell<Cost> {
     pub(crate) seen: u64,
     pub(crate) visited: u64,
     pub(crate) cost: Cost,
@@ -11,7 +11,7 @@ pub struct DijkstraMapCell<Cost> {
     pub(crate) coord: Coord,
 }
 
-impl<Cost: Zero> DijkstraMapCell<Cost> {
+impl<Cost: Zero> DistanceMapCell<Cost> {
     fn new(coord: Coord) -> Self {
         Self {
             seen: 0,
@@ -23,7 +23,7 @@ impl<Cost: Zero> DijkstraMapCell<Cost> {
     }
 }
 
-impl<Cost> DijkstraMapCell<Cost>
+impl<Cost> DistanceMapCell<Cost>
 where
     Cost: Copy,
 {
@@ -36,55 +36,55 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub enum DijkstraMapEntry<'a, Cost: 'a> {
+pub enum DistanceMapEntry<'a, Cost: 'a> {
     Origin,
     Unvisited,
     Outside,
-    Cell(&'a DijkstraMapCell<Cost>),
+    Cell(&'a DistanceMapCell<Cost>),
 }
 
-impl<'a, Cost> DijkstraMapEntry<'a, Cost> {
-    pub fn cell(self) -> Option<&'a DijkstraMapCell<Cost>> {
+impl<'a, Cost> DistanceMapEntry<'a, Cost> {
+    pub fn cell(self) -> Option<&'a DistanceMapCell<Cost>> {
         match self {
-            DijkstraMapEntry::Cell(c) => Some(c),
+            DistanceMapEntry::Cell(c) => Some(c),
             _ => None,
         }
     }
     pub fn is_origin(self) -> bool {
         match self {
-            DijkstraMapEntry::Origin => true,
+            DistanceMapEntry::Origin => true,
             _ => false,
         }
     }
     pub fn is_unvisited(self) -> bool {
         match self {
-            DijkstraMapEntry::Unvisited => true,
+            DistanceMapEntry::Unvisited => true,
             _ => false,
         }
     }
     pub fn is_outside(self) -> bool {
         match self {
-            DijkstraMapEntry::Outside => true,
+            DistanceMapEntry::Outside => true,
             _ => false,
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DijkstraMap<Cost> {
+pub struct DistanceMap<Cost> {
     pub(crate) seq: u64,
-    pub(crate) grid: Grid<DijkstraMapCell<Cost>>,
+    pub(crate) grid: Grid<DistanceMapCell<Cost>>,
     pub(crate) origin: Coord,
 }
 
-impl<Cost> DijkstraMap<Cost>
+impl<Cost> DistanceMap<Cost>
 where
     Cost: Zero + Copy,
 {
     pub fn new(size: Size) -> Self {
         Self {
             seq: 1,
-            grid: Grid::new_from_fn(size, DijkstraMapCell::new),
+            grid: Grid::new_from_fn(size, DistanceMapCell::new),
             origin: Coord::new(0, 0),
         }
     }
@@ -101,19 +101,19 @@ where
         self.grid.size()
     }
 
-    pub fn get(&self, coord: Coord) -> DijkstraMapEntry<Cost> {
+    pub fn get(&self, coord: Coord) -> DistanceMapEntry<Cost> {
         if let Some(cell) = self.grid.get(coord) {
             if cell.seen == self.seq {
                 if coord == self.origin {
-                    DijkstraMapEntry::Origin
+                    DistanceMapEntry::Origin
                 } else {
-                    DijkstraMapEntry::Cell(cell)
+                    DistanceMapEntry::Cell(cell)
                 }
             } else {
-                DijkstraMapEntry::Unvisited
+                DistanceMapEntry::Unvisited
             }
         } else {
-            DijkstraMapEntry::Outside
+            DistanceMapEntry::Outside
         }
     }
 }

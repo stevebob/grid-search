@@ -4,5 +4,5 @@ pub enum Error {
     StartSolid,
     NoPath,
     VisitOutsideContext,
-    VisitOutsideDijkstraMap,
+    VisitOutsideDistanceMap,
 }

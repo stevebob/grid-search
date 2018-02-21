@@ -6,6 +6,6 @@ pub struct SearchMetadata<C> {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DijkstraMapMetadata {
+pub struct DistanceMapMetadata {
     pub num_nodes_visited: usize,
 }

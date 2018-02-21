@@ -243,7 +243,7 @@ fn distance_map() {
     let (grid, start, _) = grid_from_strings(&strings);
 
     let mut ctx = BfsContext::new(grid.size());
-    let mut distance_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
+    let mut distance_map: DistanceMap<u32> = DistanceMap::new(ctx.size());
 
     let result = ctx.populate_distance_map(
         &grid,
@@ -286,7 +286,7 @@ fn distance_map_cardinal() {
     let (grid, start, _) = grid_from_strings(&strings);
 
     let mut ctx = BfsContext::new(grid.size());
-    let mut distance_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
+    let mut distance_map: DistanceMap<u32> = DistanceMap::new(ctx.size());
 
     let result = ctx.populate_distance_map(
         &grid,
