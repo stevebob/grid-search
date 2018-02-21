@@ -1,9 +1,10 @@
 use std::collections::BinaryHeap;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 use std::cmp::Ordering;
 use num::traits::{One, Zero};
 use direction::*;
 use grid_2d::*;
+use best::BestMapNonEmpty;
 use grid::*;
 use error::*;
 use metadata::*;
@@ -256,7 +257,10 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
     }
 }
 
-impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost> {
+impl<Cost> SearchContext<Cost>
+where
+    Cost: Copy + Add + PartialOrd + Zero + One,
+{
     pub fn populate_distance_map<G, V, D>(
         &mut self,
         grid: &G,
@@ -339,5 +343,97 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
         }
 
         Ok(DistanceMapMetadata { num_nodes_visited })
+    }
+}
+
+impl<Cost> SearchContext<Cost>
+where
+    Cost: Copy + Add + PartialOrd + Zero + One + Sub<Output = Cost>,
+{
+    pub fn best_search_uniform_distance_map<G, V, D>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        config: SearchConfig,
+        max_depth: Cost,
+        distance_map: &UniformDistanceMap<Cost, D>,
+        path: &mut Vec<Direction>,
+    ) -> Result<SearchMetadata<Cost>, Error>
+    where
+        G: SolidGrid,
+        V: Into<Direction>,
+        D: Copy + IntoIterator<Item = V>,
+    {
+        let mut initial_entry = match self.init(start, |_| max_depth == Zero::zero(), grid, config, path) {
+            Ok(initial_entry) => initial_entry,
+            Err(result) => return result,
+        };
+
+        initial_entry.cost = distance_map.cost(start).ok_or(Error::InconsistentDistanceMap)?;
+
+        let mut best_map = BestMapNonEmpty::new(initial_entry.cost, initial_entry.node_index);
+        self.priority_queue.push(initial_entry);
+
+        let mut num_nodes_visited = 0;
+
+        while let Some(current_entry) = self.priority_queue.pop() {
+
+            num_nodes_visited += 1;
+
+            let (current_coord, current_depth) = {
+                let node = &self.node_grid[current_entry.node_index];
+                (node.coord, node.cost)
+            };
+
+            if current_depth >= max_depth {
+                continue;
+            }
+
+            let remaining_depth = max_depth - current_depth;
+            if *best_map.key() + remaining_depth <= current_entry.cost {
+                continue;
+            }
+
+            let next_depth = current_depth + One::one();
+
+            for v in distance_map.directions {
+                let direction = v.into();
+                let offset: Coord = direction.into();
+                let neighbour_coord = current_coord + offset;
+
+                if let Some(false) = grid.is_solid(neighbour_coord) {
+                } else {
+                    continue;
+                }
+
+                let cost = distance_map.cost(neighbour_coord).ok_or(Error::InconsistentDistanceMap)?;
+
+                let index = self.node_grid
+                    .coord_to_index(neighbour_coord)
+                    .ok_or(Error::VisitOutsideContext)?;
+
+
+                {
+                    let node = &mut self.node_grid[index];
+                    if node.seen != self.seq {
+                        node.seen = self.seq;
+                        node.from_parent = Some(direction);
+                        node.cost = next_depth;
+                        self.priority_queue.push(PriorityEntry::new(index, cost));
+                    }
+                }
+
+                best_map.insert_lt(cost, index);
+            }
+        }
+
+        let (cost, index) = best_map.into();
+        path::make_path_all_adjacent(&self.node_grid, index, path);
+        let length = path.len();
+        Ok(SearchMetadata {
+            num_nodes_visited,
+            length,
+            cost,
+        })
     }
 }

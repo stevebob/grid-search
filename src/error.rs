@@ -5,4 +5,5 @@ pub enum Error {
     NoPath,
     VisitOutsideContext,
     VisitOutsideDistanceMap,
+    InconsistentDistanceMap,
 }

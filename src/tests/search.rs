@@ -3,6 +3,7 @@ use grid_2d::*;
 use grid::*;
 use path::PathWalk;
 use search::*;
+use bfs::*;
 use distance_map::*;
 use astar::*;
 use error::*;
@@ -599,4 +600,33 @@ fn dijkstra_predicate() {
     );
 
     println!("{:?}", result);
+}
+
+#[test]
+fn uniform_best_map() {
+    let strings = vec![
+        "..........",
+        "..........",
+        "..........",
+        "..........",
+        "....s.....",
+        "..........",
+        "..........",
+        "....g.....",
+        "..........",
+        "..........",
+    ];
+
+    let (grid, start, goal) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
+
+    let mut search_ctx: SearchContext<i32> = SearchContext::new(grid.size());
+    let mut bfs_ctx = BfsContext::new(grid.size());
+    let mut distance_map: UniformDistanceMap<i32, _> = UniformDistanceMap::new(grid.size(), CardinalDirections);
+    let mut path = Vec::new();
+
+    bfs_ctx.populate_uniform_distance_map(&grid, goal, Default::default(), &mut distance_map).unwrap();
+    let _metadata = search_ctx.best_search_uniform_distance_map(&grid, start, Default::default(), 3, &distance_map, &mut path)
+        .unwrap();
+
+    assert_eq!(path[0], Direction::South);
 }

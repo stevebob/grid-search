@@ -193,8 +193,7 @@ fn start_is_solid() {
         start,
         goal,
         Directions,
-        BfsConfig {
-            max_depth: ::std::usize::MAX,
+        SearchConfig {
             allow_solid_start: false,
         },
         &mut path,
@@ -350,6 +349,7 @@ fn bfs_best() {
         score,
         Directions,
         Default::default(),
+        ::std::usize::MAX,
         &mut path,
     ).unwrap();
 

@@ -13,6 +13,7 @@ pub struct DistanceMapCell<Cost> {
 
 impl<Cost: Zero> DistanceMapCell<Cost> {
     fn new(coord: Coord) -> Self {
+
         Self {
             seen: 0,
             visited: 0,
@@ -115,5 +116,55 @@ where
         } else {
             DistanceMapEntry::Outside
         }
+    }
+
+    pub fn cost(&self, coord: Coord) -> Option<Cost> {
+        match self.get(coord) {
+            DistanceMapEntry::Cell(cell) => Some(cell.cost),
+            DistanceMapEntry::Origin => Some(Zero::zero()),
+            DistanceMapEntry::Unvisited => None,
+            DistanceMapEntry::Outside => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UniformDistanceMap<Cost, Directions> {
+    pub(crate) distance_map: DistanceMap<Cost>,
+    pub(crate) directions: Directions,
+}
+
+impl<Cost, IntoDirection, Directions> UniformDistanceMap<Cost, Directions>
+where
+    Cost: Zero + Copy,
+    IntoDirection: Into<Direction>,
+    Directions: Copy + IntoIterator<Item = IntoDirection>,
+{
+    pub fn new(size: Size, directions: Directions) -> Self {
+        let distance_map = DistanceMap::new(size);
+        Self {
+            distance_map,
+            directions,
+        }
+    }
+
+    pub fn width(&self) -> u32 {
+        self.distance_map.width()
+    }
+
+    pub fn height(&self) -> u32 {
+        self.distance_map.height()
+    }
+
+    pub fn size(&self) -> Size {
+        self.distance_map.size()
+    }
+
+    pub fn get(&self, coord: Coord) -> DistanceMapEntry<Cost> {
+        self.distance_map.get(coord)
+    }
+
+    pub fn cost(&self, coord: Coord) -> Option<Cost> {
+        self.distance_map.cost(coord)
     }
 }

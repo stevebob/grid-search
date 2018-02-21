@@ -83,7 +83,8 @@ impl BfsContext {
         start: Coord,
         score: F,
         directions: D,
-        config: BfsConfig,
+        config: SearchConfig,
+        max_depth: usize,
         path: &mut Vec<Direction>,
     ) -> Result<SearchMetadata<usize>, Error>
     where
@@ -124,7 +125,7 @@ impl BfsContext {
         while let Some(current_entry) = self.queue.pop_front() {
             num_nodes_visited += 1;
 
-            if current_entry.depth >= config.max_depth {
+            if current_entry.depth >= max_depth {
                 continue;
             }
 
@@ -180,7 +181,7 @@ impl BfsContext {
         start: Coord,
         predicate: F,
         directions: D,
-        config: BfsConfig,
+        config: SearchConfig,
         path: &mut Vec<Direction>,
     ) -> Result<SearchMetadata<usize>, Error>
     where
@@ -222,10 +223,6 @@ impl BfsContext {
 
         while let Some(current_entry) = self.queue.pop_front() {
             num_nodes_visited += 1;
-
-            if current_entry.depth >= config.max_depth {
-                continue;
-            }
 
             let current_coord = self.node_grid[current_entry.index].coord;
 
@@ -275,7 +272,7 @@ impl BfsContext {
         start: Coord,
         goal: Coord,
         directions: D,
-        config: BfsConfig,
+        config: SearchConfig,
         path: &mut Vec<Direction>,
     ) -> Result<SearchMetadata<usize>, Error>
     where
@@ -291,7 +288,7 @@ impl BfsContext {
         grid: &G,
         start: Coord,
         directions: D,
-        config: BfsConfig,
+        config: SearchConfig,
         distance_map: &mut DistanceMap<C>,
     ) -> Result<DistanceMapMetadata, Error>
     where
@@ -327,10 +324,6 @@ impl BfsContext {
         while let Some(current_entry) = self.queue.pop_front() {
             num_nodes_visited += 1;
 
-            if current_entry.depth >= config.max_depth {
-                continue;
-            }
-
             let next_depth = current_entry.depth + 1;
 
             let (current_coord, current_cost) = {
@@ -364,5 +357,21 @@ impl BfsContext {
         }
 
         Ok(DistanceMapMetadata { num_nodes_visited })
+    }
+
+    pub fn populate_uniform_distance_map<G, V, D, C>(
+        &mut self,
+        grid: &G,
+        start: Coord,
+        config: SearchConfig,
+        distance_map: &mut UniformDistanceMap<C, D>,
+    ) -> Result<DistanceMapMetadata, Error>
+    where
+        G: SolidGrid,
+        V: Into<Direction>,
+        D: Copy + IntoIterator<Item = V>,
+        C: Copy + Zero + One + Add<C>,
+    {
+        self.populate_distance_map(grid, start, distance_map.directions, config, &mut distance_map.distance_map)
     }
 }
