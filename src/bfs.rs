@@ -372,6 +372,12 @@ impl BfsContext {
         D: Copy + IntoIterator<Item = V>,
         C: Copy + Zero + One + Add<C>,
     {
-        self.populate_distance_map(grid, start, distance_map.directions, config, &mut distance_map.distance_map)
+        self.populate_distance_map(
+            grid,
+            start,
+            distance_map.directions,
+            config,
+            &mut distance_map.distance_map,
+        )
     }
 }

@@ -364,12 +364,15 @@ where
         V: Into<Direction>,
         D: Copy + IntoIterator<Item = V>,
     {
-        let mut initial_entry = match self.init(start, |_| max_depth == Zero::zero(), grid, config, path) {
-            Ok(initial_entry) => initial_entry,
-            Err(result) => return result,
-        };
+        let mut initial_entry =
+            match self.init(start, |_| max_depth == Zero::zero(), grid, config, path) {
+                Ok(initial_entry) => initial_entry,
+                Err(result) => return result,
+            };
 
-        initial_entry.cost = distance_map.cost(start).ok_or(Error::InconsistentDistanceMap)?;
+        initial_entry.cost = distance_map
+            .cost(start)
+            .ok_or(Error::InconsistentDistanceMap)?;
 
         let mut best_map = BestMapNonEmpty::new(initial_entry.cost, initial_entry.node_index);
         self.priority_queue.push(initial_entry);
@@ -377,7 +380,6 @@ where
         let mut num_nodes_visited = 0;
 
         while let Some(current_entry) = self.priority_queue.pop() {
-
             num_nodes_visited += 1;
 
             let (current_coord, current_depth) = {
@@ -406,12 +408,13 @@ where
                     continue;
                 }
 
-                let cost = distance_map.cost(neighbour_coord).ok_or(Error::InconsistentDistanceMap)?;
+                let cost = distance_map
+                    .cost(neighbour_coord)
+                    .ok_or(Error::InconsistentDistanceMap)?;
 
                 let index = self.node_grid
                     .coord_to_index(neighbour_coord)
                     .ok_or(Error::VisitOutsideContext)?;
-
 
                 {
                     let node = &mut self.node_grid[index];

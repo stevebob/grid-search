@@ -13,7 +13,6 @@ pub struct DistanceMapCell<Cost> {
 
 impl<Cost: Zero> DistanceMapCell<Cost> {
     fn new(coord: Coord) -> Self {
-
         Self {
             seen: 0,
             visited: 0,
