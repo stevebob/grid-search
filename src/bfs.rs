@@ -9,7 +9,7 @@ use error::*;
 use metadata::*;
 use config::*;
 use path::{self, PathNode};
-use dijkstra_map::*;
+use distance_map::*;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 struct BfsNode {
@@ -286,13 +286,13 @@ impl BfsContext {
         self.bfs_predicate(grid, start, |c| c == goal, directions, config, path)
     }
 
-    pub fn populate_dijkstra_map<G, V, D, C>(
+    pub fn populate_distance_map<G, V, D, C>(
         &mut self,
         grid: &G,
         start: Coord,
         directions: D,
         config: BfsConfig,
-        dijkstra_map: &mut DijkstraMap<C>,
+        distance_map: &mut DijkstraMap<C>,
     ) -> Result<DijkstraMapMetadata, Error>
     where
         G: SolidGrid,
@@ -305,7 +305,7 @@ impl BfsContext {
                 return Err(Error::StartSolid);
             }
 
-            let index = dijkstra_map
+            let index = distance_map
                 .grid
                 .coord_to_index(start)
                 .ok_or(Error::VisitOutsideDijkstraMap)?;
@@ -313,10 +313,10 @@ impl BfsContext {
             self.queue.clear();
             self.queue.push_back(Entry::new(index, 0));
 
-            dijkstra_map.seq += 1;
-            dijkstra_map.origin = start;
-            let cell = &mut dijkstra_map.grid[index];
-            cell.seen = dijkstra_map.seq;
+            distance_map.seq += 1;
+            distance_map.origin = start;
+            let cell = &mut distance_map.grid[index];
+            cell.seen = distance_map.seq;
             cell.cost = Zero::zero();
         } else {
             return Err(Error::StartOutsideGrid);
@@ -334,7 +334,7 @@ impl BfsContext {
             let next_depth = current_entry.depth + 1;
 
             let (current_coord, current_cost) = {
-                let cell = &dijkstra_map.grid[current_entry.index];
+                let cell = &distance_map.grid[current_entry.index];
                 (cell.coord, cell.cost)
             };
 
@@ -348,14 +348,14 @@ impl BfsContext {
                     continue;
                 }
 
-                let index = dijkstra_map
+                let index = distance_map
                     .grid
                     .coord_to_index(neighbour_coord)
                     .ok_or(Error::VisitOutsideDijkstraMap)?;
 
-                let cell = &mut dijkstra_map.grid[index];
-                if cell.seen != dijkstra_map.seq {
-                    cell.seen = dijkstra_map.seq;
+                let cell = &mut distance_map.grid[index];
+                if cell.seen != distance_map.seq {
+                    cell.seen = distance_map.seq;
                     cell.direction = direction.opposite();
                     cell.cost = current_cost + One::one();
                     self.queue.push_back(Entry::new(index, next_depth));

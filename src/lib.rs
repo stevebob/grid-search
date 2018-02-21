@@ -16,7 +16,7 @@ mod grid;
 mod path;
 mod error;
 mod metadata;
-mod dijkstra_map;
+mod distance_map;
 mod config;
 
 pub use bfs::*;
@@ -28,7 +28,7 @@ pub use grid::*;
 pub use path::*;
 pub use error::*;
 pub use metadata::*;
-pub use dijkstra_map::*;
+pub use distance_map::*;
 pub use config::*;
 
 pub use grid_2d::{Coord, Size};

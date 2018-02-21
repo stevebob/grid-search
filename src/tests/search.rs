@@ -3,7 +3,7 @@ use grid_2d::*;
 use grid::*;
 use path::PathWalk;
 use search::*;
-use dijkstra_map::*;
+use distance_map::*;
 use astar::*;
 use error::*;
 use config::*;
@@ -508,40 +508,40 @@ fn cardinal_jps() {
 }
 
 #[test]
-fn dijkstra_map() {
+fn distance_map() {
     let strings = vec!["..#.", "..##", ".#.B", ".#.."];
 
     let (grid, start, _) = grid_from_strings(&strings, DEFAULT_ORDINAL_MULTIPLIER);
 
     let mut ctx: SearchContext<u32> = SearchContext::new(grid.size());
-    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
+    let mut distance_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
 
-    let result = ctx.populate_dijkstra_map(
+    let result = ctx.populate_distance_map(
         &grid,
         start,
         Directions,
         Default::default(),
-        &mut dijkstra_map,
+        &mut distance_map,
     ).unwrap();
 
     assert_eq!(result.num_nodes_visited, 10);
 
-    assert!(dijkstra_map.get(Coord::new(10, 10)).is_outside());
-    assert!(dijkstra_map.get(Coord::new(3, 2)).is_origin());
-    assert!(dijkstra_map.get(Coord::new(3, 0)).is_unvisited());
-    assert!(dijkstra_map.get(Coord::new(1, 2)).is_unvisited());
-    assert_eq!(dijkstra_map.get(Coord::new(0, 3)).cell().unwrap().cost(), 6);
+    assert!(distance_map.get(Coord::new(10, 10)).is_outside());
+    assert!(distance_map.get(Coord::new(3, 2)).is_origin());
+    assert!(distance_map.get(Coord::new(3, 0)).is_unvisited());
+    assert!(distance_map.get(Coord::new(1, 2)).is_unvisited());
+    assert_eq!(distance_map.get(Coord::new(0, 3)).cell().unwrap().cost(), 6);
     assert_eq!(
-        dijkstra_map
+        distance_map
             .get(Coord::new(0, 3))
             .cell()
             .unwrap()
             .direction(),
         Direction::North
     );
-    assert_eq!(dijkstra_map.get(Coord::new(1, 1)).cell().unwrap().cost(), 3);
+    assert_eq!(distance_map.get(Coord::new(1, 1)).cell().unwrap().cost(), 3);
     assert_eq!(
-        dijkstra_map
+        distance_map
             .get(Coord::new(1, 1))
             .cell()
             .unwrap()
@@ -551,23 +551,23 @@ fn dijkstra_map() {
 }
 
 #[test]
-fn dijkstra_map_weights() {
+fn distance_map_weights() {
     let strings = vec!["...", ".B.", "..."];
 
     let (grid, start, _) = grid_from_strings(&strings, 20);
 
     let mut ctx: SearchContext<u32> = SearchContext::new(grid.size());
-    let mut dijkstra_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
+    let mut distance_map: DijkstraMap<u32> = DijkstraMap::new(ctx.size());
 
-    ctx.populate_dijkstra_map(
+    ctx.populate_distance_map(
         &grid,
         start,
         Directions,
         Default::default(),
-        &mut dijkstra_map,
+        &mut distance_map,
     ).unwrap();
 
-    assert_eq!(dijkstra_map.get(Coord::new(0, 0)).cell().unwrap().cost(), 2);
+    assert_eq!(distance_map.get(Coord::new(0, 0)).cell().unwrap().cost(), 2);
 }
 
 #[test]

@@ -9,7 +9,7 @@ use error::*;
 use metadata::*;
 use config::*;
 use path::{self, PathNode};
-use dijkstra_map::*;
+use distance_map::*;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub(crate) struct SearchNode<Cost> {
@@ -257,13 +257,13 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
 }
 
 impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost> {
-    pub fn populate_dijkstra_map<G, V, D>(
+    pub fn populate_distance_map<G, V, D>(
         &mut self,
         grid: &G,
         start: Coord,
         directions: D,
         config: SearchConfig,
-        dijkstra_map: &mut DijkstraMap<Cost>,
+        distance_map: &mut DijkstraMap<Cost>,
     ) -> Result<DijkstraMapMetadata, Error>
     where
         G: CostGrid<Cost = Cost>,
@@ -275,7 +275,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
                 return Err(Error::StartSolid);
             };
 
-            let index = dijkstra_map
+            let index = distance_map
                 .grid
                 .coord_to_index(start)
                 .ok_or(Error::VisitOutsideDijkstraMap)?;
@@ -284,10 +284,10 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
             self.priority_queue
                 .push(PriorityEntry::new(index, Zero::zero()));
 
-            dijkstra_map.seq += 1;
-            dijkstra_map.origin = start;
-            let cell = &mut dijkstra_map.grid[index];
-            cell.seen = dijkstra_map.seq;
+            distance_map.seq += 1;
+            distance_map.origin = start;
+            let cell = &mut distance_map.grid[index];
+            cell.seen = distance_map.seq;
             cell.cost = Zero::zero();
         } else {
             return Err(Error::StartOutsideGrid);
@@ -299,11 +299,11 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
             num_nodes_visited += 1;
 
             let (current_coord, current_cost) = {
-                let cell = &mut dijkstra_map.grid[current_entry.node_index];
-                if cell.visited == dijkstra_map.seq {
+                let cell = &mut distance_map.grid[current_entry.node_index];
+                if cell.visited == distance_map.seq {
                     continue;
                 }
-                cell.visited = dijkstra_map.seq;
+                cell.visited = distance_map.seq;
                 (cell.coord, cell.cost)
             };
 
@@ -320,16 +320,16 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero + One> SearchContext<Cost>
 
                 let cost = current_cost + neighbour_cost;
 
-                let index = dijkstra_map
+                let index = distance_map
                     .grid
                     .coord_to_index(neighbour_coord)
                     .ok_or(Error::VisitOutsideDijkstraMap)?;
 
-                let cell = &mut dijkstra_map.grid[index];
+                let cell = &mut distance_map.grid[index];
 
-                if cell.seen != dijkstra_map.seq || cell.cost > cost {
+                if cell.seen != distance_map.seq || cell.cost > cost {
                     cell.direction = direction.opposite();
-                    cell.seen = dijkstra_map.seq;
+                    cell.seen = distance_map.seq;
                     cell.cost = cost;
 
                     let entry = PriorityEntry::new(index, cost);
