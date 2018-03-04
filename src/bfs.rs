@@ -297,26 +297,53 @@ impl BfsContext {
         D: Copy + IntoIterator<Item = V>,
         C: Copy + Zero + One + Add<C>,
     {
-        if let Some(solid) = grid.is_solid(start) {
-            if solid && !config.allow_solid_start {
-                return Err(Error::StartSolid);
+        self.populate_distance_map_multi(
+            grid,
+            Some(start),
+            directions,
+            config,
+            distance_map,
+        )
+    }
+
+    pub fn populate_distance_map_multi<G, V, D, C, I>(
+        &mut self,
+        grid: &G,
+        zero_points: I,
+        directions: D,
+        config: SearchConfig,
+        distance_map: &mut DistanceMap<C>,
+    ) -> Result<DistanceMapMetadata, Error>
+    where
+        G: SolidGrid,
+        V: Into<Direction>,
+        D: Copy + IntoIterator<Item = V>,
+        C: Copy + Zero + One + Add<C>,
+        I: IntoIterator<Item = Coord>,
+    {
+        self.queue.clear();
+
+        for start in zero_points {
+            if let Some(solid) = grid.is_solid(start) {
+                if solid && !config.allow_solid_start {
+                    return Err(Error::StartSolid);
+                }
+
+                let index = distance_map
+                    .grid
+                    .coord_to_index(start)
+                    .ok_or(Error::VisitOutsideDistanceMap)?;
+
+                self.queue.push_back(Entry::new(index, 0));
+
+                distance_map.seq += 1;
+                distance_map.origin = start;
+                let cell = &mut distance_map.grid[index];
+                cell.seen = distance_map.seq;
+                cell.cost = Zero::zero();
+            } else {
+                return Err(Error::StartOutsideGrid);
             }
-
-            let index = distance_map
-                .grid
-                .coord_to_index(start)
-                .ok_or(Error::VisitOutsideDistanceMap)?;
-
-            self.queue.clear();
-            self.queue.push_back(Entry::new(index, 0));
-
-            distance_map.seq += 1;
-            distance_map.origin = start;
-            let cell = &mut distance_map.grid[index];
-            cell.seen = distance_map.seq;
-            cell.cost = Zero::zero();
-        } else {
-            return Err(Error::StartOutsideGrid);
         }
 
         let mut num_nodes_visited = 0;
@@ -375,6 +402,29 @@ impl BfsContext {
         self.populate_distance_map(
             grid,
             start,
+            distance_map.directions,
+            config,
+            &mut distance_map.distance_map,
+        )
+    }
+
+    pub fn populate_uniform_distance_map_multi<G, V, D, C, I>(
+        &mut self,
+        grid: &G,
+        zero_points: I,
+        config: SearchConfig,
+        distance_map: &mut UniformDistanceMap<C, D>,
+    ) -> Result<DistanceMapMetadata, Error>
+    where
+        G: SolidGrid,
+        V: Into<Direction>,
+        D: Copy + IntoIterator<Item = V>,
+        C: Copy + Zero + One + Add<C>,
+        I: IntoIterator<Item = Coord>,
+    {
+        self.populate_distance_map_multi(
+            grid,
+            zero_points,
             distance_map.directions,
             config,
             &mut distance_map.distance_map,
