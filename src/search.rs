@@ -400,7 +400,7 @@ where
 
             for v in distance_map.directions {
                 let direction = v.into();
-                let offset: Coord = direction.into();
+                let offset: Coord = direction.coord();
                 let neighbour_coord = current_coord + offset;
 
                 if let Some(false) = grid.is_solid(neighbour_coord) {
@@ -430,7 +430,7 @@ where
             }
         }
 
-        let (cost, index) = best_map.into();
+        let (cost, index) = best_map.into_key_and_value();
         path::make_path_all_adjacent(&self.node_grid, index, path);
         let length = path.len();
         Ok(SearchMetadata {

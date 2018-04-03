@@ -79,7 +79,7 @@ impl<'a> Iterator for PathWalk<'a> {
     type Item = (Coord, Direction);
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(&direction) = self.directions.next() {
-            let offset: Coord = direction.into();
+            let offset: Coord = direction.coord();
             self.current_coord = self.current_coord + offset;
             Some((self.current_coord, direction))
         } else {

@@ -135,7 +135,7 @@ impl BfsContext {
 
             for v in directions {
                 let direction = v.into();
-                let offset: Coord = direction.into();
+                let offset: Coord = direction.coord();
                 let neighbour_coord = current_coord + offset;
 
                 if let Some(false) = grid.is_solid(neighbour_coord) {
@@ -230,7 +230,7 @@ impl BfsContext {
 
             for v in directions {
                 let direction = v.into();
-                let offset: Coord = direction.into();
+                let offset: Coord = direction.coord();
                 let neighbour_coord = current_coord + offset;
 
                 if let Some(false) = grid.is_solid(neighbour_coord) {
@@ -360,7 +360,7 @@ impl BfsContext {
 
             for v in directions {
                 let direction = v.into();
-                let offset: Coord = direction.into();
+                let offset: Coord = direction.coord();
                 let neighbour_coord = current_coord + offset;
 
                 if let Some(false) = grid.is_solid(neighbour_coord) {
