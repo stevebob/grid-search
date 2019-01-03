@@ -1,12 +1,12 @@
-use std::ops::Add;
-use num::traits::Zero;
-use direction::*;
-use grid::*;
-use error::*;
-use metadata::*;
 use config::*;
-use search::*;
+use direction::*;
+use error::*;
+use grid::*;
+use metadata::*;
+use num_traits::Zero;
 use path;
+use search::*;
+use std::ops::Add;
 
 impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
     pub fn dijkstra<G, V, D>(
@@ -91,8 +91,9 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
                         continue;
                     };
 
-                let index = self.node_grid
-                    .coord_to_index(neighbour_coord)
+                let index = self
+                    .node_grid
+                    .index_of_coord(neighbour_coord)
                     .ok_or(Error::VisitOutsideContext)?;
 
                 let cost = current_cost + neighbour_cost;

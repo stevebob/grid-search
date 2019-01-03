@@ -1,18 +1,19 @@
+use best::BestMapNonEmpty;
+use config::*;
+use direction::*;
+use distance_map::*;
+use error::*;
+use grid::*;
+use grid_2d::*;
+use metadata::*;
+use num_traits::{One, Zero};
+use path::{self, PathNode};
+use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::ops::{Add, Sub};
-use std::cmp::Ordering;
-use num::traits::{One, Zero};
-use direction::*;
-use grid_2d::*;
-use best::BestMapNonEmpty;
-use grid::*;
-use error::*;
-use metadata::*;
-use config::*;
-use path::{self, PathNode};
-use distance_map::*;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct SearchNode<Cost> {
     pub(crate) seen: u64,
     pub(crate) visited: u64,
@@ -21,8 +22,8 @@ pub(crate) struct SearchNode<Cost> {
     pub(crate) cost: Cost,
 }
 
-impl<Cost: Zero> From<Coord> for SearchNode<Cost> {
-    fn from(coord: Coord) -> Self {
+impl<Cost: Zero> SearchNode<Cost> {
+    fn new(coord: Coord) -> Self {
         Self {
             seen: 0,
             visited: 0,
@@ -42,7 +43,8 @@ impl<Cost> PathNode for SearchNode<Cost> {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub(crate) struct PriorityEntry<Cost: PartialOrd<Cost>> {
     pub(crate) node_index: usize,
     pub(crate) cost: Cost,
@@ -77,7 +79,8 @@ impl<Cost: PartialOrd<Cost>> Ord for PriorityEntry<Cost> {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct SearchContext<Cost: PartialOrd<Cost>> {
     pub(crate) seq: u64,
     pub(crate) priority_queue: BinaryHeap<PriorityEntry<Cost>>,
@@ -88,7 +91,7 @@ impl<Cost: PartialOrd<Cost> + Zero> SearchContext<Cost> {
     pub fn new(size: Size) -> Self {
         Self {
             seq: 0,
-            node_grid: Grid::new_from_coord(size),
+            node_grid: Grid::new_fn(size, SearchNode::new),
             priority_queue: BinaryHeap::new(),
         }
     }
@@ -117,7 +120,7 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
         F: Fn(Coord) -> bool,
     {
         if let Some(solid) = grid.is_solid(start) {
-            let index = if let Some(index) = self.node_grid.coord_to_index(start) {
+            let index = if let Some(index) = self.node_grid.index_of_coord(start) {
                 index
             } else {
                 return Err(Err(Error::VisitOutsideContext));
@@ -173,8 +176,9 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
 
         self.priority_queue.push(initial_entry);
 
-        let goal_index = self.node_grid
-            .coord_to_index(goal)
+        let goal_index = self
+            .node_grid
+            .index_of_coord(goal)
             .ok_or(Error::VisitOutsideContext)?;
 
         let mut num_nodes_visited = 0;
@@ -237,8 +241,9 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + Zero> SearchContext<Cost> {
     where
         H: Fn(Coord, Coord) -> Cost,
     {
-        let index = self.node_grid
-            .coord_to_index(successor_coord)
+        let index = self
+            .node_grid
+            .index_of_coord(successor_coord)
             .ok_or(Error::VisitOutsideContext)?;
 
         let node = &mut self.node_grid[index];
@@ -281,7 +286,7 @@ where
 
             let index = distance_map
                 .grid
-                .coord_to_index(start)
+                .index_of_coord(start)
                 .ok_or(Error::VisitOutsideDistanceMap)?;
 
             self.priority_queue.clear();
@@ -326,7 +331,7 @@ where
 
                 let index = distance_map
                     .grid
-                    .coord_to_index(neighbour_coord)
+                    .index_of_coord(neighbour_coord)
                     .ok_or(Error::VisitOutsideDistanceMap)?;
 
                 let cell = &mut distance_map.grid[index];
@@ -412,8 +417,9 @@ where
                     .cost(neighbour_coord)
                     .ok_or(Error::InconsistentDistanceMap)?;
 
-                let index = self.node_grid
-                    .coord_to_index(neighbour_coord)
+                let index = self
+                    .node_grid
+                    .index_of_coord(neighbour_coord)
                     .ok_or(Error::VisitOutsideContext)?;
 
                 {

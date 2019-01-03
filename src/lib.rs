@@ -1,35 +1,35 @@
 extern crate best;
 extern crate direction;
 extern crate grid_2d;
-extern crate num;
-extern crate serde;
+extern crate num_traits;
+#[cfg(feature = "serialize")]
 #[macro_use]
-extern crate serde_derive;
+extern crate serde;
 
-mod bfs;
-mod search;
-mod jump_point_search;
-mod cardinal_jump_point_search;
 mod astar;
-mod dijkstra;
-mod grid;
-mod path;
-mod error;
-mod metadata;
-mod distance_map;
+mod bfs;
+mod cardinal_jump_point_search;
 mod config;
+mod dijkstra;
+mod distance_map;
+mod error;
+mod grid;
+mod jump_point_search;
+mod metadata;
+mod path;
+mod search;
 
-pub use bfs::*;
-pub use search::*;
-pub use jump_point_search::*;
 pub use astar::*;
-pub use dijkstra::*;
-pub use grid::*;
-pub use path::*;
-pub use error::*;
-pub use metadata::*;
-pub use distance_map::*;
+pub use bfs::*;
 pub use config::*;
+pub use dijkstra::*;
+pub use distance_map::*;
+pub use error::*;
+pub use grid::*;
+pub use jump_point_search::*;
+pub use metadata::*;
+pub use path::*;
+pub use search::*;
 
 pub use grid_2d::{Coord, Size};
 

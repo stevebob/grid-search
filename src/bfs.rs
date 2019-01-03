@@ -1,17 +1,18 @@
-use std::collections::VecDeque;
-use std::ops::Add;
 use best::BestMap;
-use num::traits::{One, Zero};
+use config::*;
 use direction::Direction;
+use distance_map::*;
+use error::*;
 use grid::SolidGrid;
 use grid_2d::*;
-use error::*;
 use metadata::*;
-use config::*;
+use num_traits::{One, Zero};
 use path::{self, PathNode};
-use distance_map::*;
+use std::collections::VecDeque;
+use std::ops::Add;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy)]
 struct BfsNode {
     seen: u64,
     coord: Coord,
@@ -27,8 +28,8 @@ impl PathNode for BfsNode {
     }
 }
 
-impl From<Coord> for BfsNode {
-    fn from(coord: Coord) -> Self {
+impl BfsNode {
+    fn new(coord: Coord) -> Self {
         Self {
             seen: 0,
             coord,
@@ -37,7 +38,8 @@ impl From<Coord> for BfsNode {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 struct Entry {
     index: usize,
     depth: usize,
@@ -49,7 +51,8 @@ impl Entry {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct BfsContext {
     seq: u64,
     queue: VecDeque<Entry>,
@@ -60,7 +63,7 @@ impl BfsContext {
     pub fn new(size: Size) -> Self {
         Self {
             seq: 0,
-            node_grid: Grid::new_from_coord(size),
+            node_grid: Grid::new_fn(size, BfsNode::new),
             queue: VecDeque::new(),
         }
     }
@@ -101,8 +104,9 @@ impl BfsContext {
                 return Err(Error::StartSolid);
             }
 
-            let index = self.node_grid
-                .coord_to_index(start)
+            let index = self
+                .node_grid
+                .index_of_coord(start)
                 .ok_or(Error::VisitOutsideContext)?;
 
             if let Some(initial_score) = score(start) {
@@ -143,8 +147,9 @@ impl BfsContext {
                     continue;
                 }
 
-                let index = self.node_grid
-                    .coord_to_index(neighbour_coord)
+                let index = self
+                    .node_grid
+                    .index_of_coord(neighbour_coord)
                     .ok_or(Error::VisitOutsideContext)?;
 
                 {
@@ -195,8 +200,9 @@ impl BfsContext {
                 return Err(Error::StartSolid);
             }
 
-            let index = self.node_grid
-                .coord_to_index(start)
+            let index = self
+                .node_grid
+                .index_of_coord(start)
                 .ok_or(Error::VisitOutsideContext)?;
 
             if predicate(start) {
@@ -238,8 +244,9 @@ impl BfsContext {
                     continue;
                 }
 
-                let index = self.node_grid
-                    .coord_to_index(neighbour_coord)
+                let index = self
+                    .node_grid
+                    .index_of_coord(neighbour_coord)
                     .ok_or(Error::VisitOutsideContext)?;
 
                 {
@@ -297,13 +304,7 @@ impl BfsContext {
         D: Copy + IntoIterator<Item = V>,
         C: Copy + Zero + One + Add<C>,
     {
-        self.populate_distance_map_multi(
-            grid,
-            Some(start),
-            directions,
-            config,
-            distance_map,
-        )
+        self.populate_distance_map_multi(grid, Some(start), directions, config, distance_map)
     }
 
     pub fn populate_distance_map_multi<G, V, D, C, I>(
@@ -331,7 +332,7 @@ impl BfsContext {
 
                 let index = distance_map
                     .grid
-                    .coord_to_index(start)
+                    .index_of_coord(start)
                     .ok_or(Error::VisitOutsideDistanceMap)?;
 
                 self.queue.push_back(Entry::new(index, 0));
@@ -370,7 +371,7 @@ impl BfsContext {
 
                 let index = distance_map
                     .grid
-                    .coord_to_index(neighbour_coord)
+                    .index_of_coord(neighbour_coord)
                     .ok_or(Error::VisitOutsideDistanceMap)?;
 
                 let cell = &mut distance_map.grid[index];

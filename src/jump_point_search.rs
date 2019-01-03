@@ -1,12 +1,12 @@
-use std::ops::*;
-use num::traits::*;
-use direction::*;
-use metadata::*;
 use config::*;
-use search::*;
+use direction::*;
 use error::*;
 use grid::*;
+use metadata::*;
+use num_traits::*;
 use path;
+use search::*;
+use std::ops::*;
 
 fn octile_distance<C>(a: Coord, b: Coord) -> C
 where
@@ -221,8 +221,9 @@ where
             Err(result) => return result,
         };
 
-        let goal_index = self.node_grid
-            .coord_to_index(goal)
+        let goal_index = self
+            .node_grid
+            .index_of_coord(goal)
             .ok_or(Error::VisitOutsideContext)?;
 
         for direction in Directions {

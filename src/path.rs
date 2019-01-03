@@ -1,7 +1,7 @@
-use std::slice;
 use direction::Direction;
 use grid_2d::*;
 use search::*;
+use std::slice;
 
 pub(crate) trait PathNode {
     fn from_parent(&self) -> Option<Direction>;
@@ -19,7 +19,7 @@ pub(crate) fn make_path_all_adjacent<N: PathNode>(
         path.push(from_parent);
         let offset = from_parent.opposite().coord();
         index = node_grid
-            .coord_to_index(node_grid[index].coord() + offset)
+            .index_of_coord(node_grid[index].coord() + offset)
             .expect("Invalid search state");
     }
     path.reverse();

@@ -1,11 +1,11 @@
-use std::ops::{Add, Mul};
-use num::traits::{NumCast, Zero};
-use direction::*;
-use grid::*;
-use error::*;
-use metadata::*;
 use config::*;
+use direction::*;
+use error::*;
+use grid::*;
+use metadata::*;
+use num_traits::{NumCast, Zero};
 use search::*;
+use std::ops::{Add, Mul};
 
 fn manhatten_distance(a: Coord, b: Coord) -> i32 {
     (a.x - b.x).abs() + (a.y - b.y).abs()
@@ -59,7 +59,8 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero> SearchContext<C
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy)]
 pub struct HeuristicDirectionWeights<Cost> {
     pub cardinal: Cost,
     pub ordinal: Cost,

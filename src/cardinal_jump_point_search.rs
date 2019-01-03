@@ -1,12 +1,12 @@
-use std::ops::Add;
-use num::traits::{NumCast, One, Zero};
-use direction::*;
-use grid::*;
-use error::*;
-use metadata::*;
 use config::*;
-use search::*;
+use direction::*;
+use error::*;
+use grid::*;
+use metadata::*;
+use num_traits::{NumCast, One, Zero};
 use path;
+use search::*;
+use std::ops::Add;
 
 fn manhatten_distance<Cost>(a: Coord, b: Coord) -> Cost
 where
@@ -128,8 +128,9 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero + One> SearchCon
             Err(result) => return result,
         };
 
-        let goal_index = self.node_grid
-            .coord_to_index(goal)
+        let goal_index = self
+            .node_grid
+            .index_of_coord(goal)
             .ok_or(Error::VisitOutsideContext)?;
 
         for direction in CardinalDirections {
@@ -157,7 +158,8 @@ impl<Cost: Copy + Add<Cost> + PartialOrd<Cost> + NumCast + Zero + One> SearchCon
                     continue;
                 }
                 node.visited = self.seq;
-                let direction = node.from_parent
+                let direction = node
+                    .from_parent
                     .expect("Open set node without direction")
                     .cardinal()
                     .expect("Expected cardinal directions only");

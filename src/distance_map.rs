@@ -1,8 +1,9 @@
-use num::traits::Zero;
-use grid_2d::*;
 use direction::*;
+use grid_2d::*;
+use num_traits::Zero;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy)]
 pub struct DistanceMapCell<Cost> {
     pub(crate) seen: u64,
     pub(crate) visited: u64,
@@ -70,7 +71,8 @@ impl<'a, Cost> DistanceMapEntry<'a, Cost> {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct DistanceMap<Cost> {
     pub(crate) seq: u64,
     pub(crate) grid: Grid<DistanceMapCell<Cost>>,
@@ -84,7 +86,7 @@ where
     pub fn new(size: Size) -> Self {
         Self {
             seq: 1,
-            grid: Grid::new_from_fn(size, DistanceMapCell::new),
+            grid: Grid::new_fn(size, DistanceMapCell::new),
             origin: Coord::new(0, 0),
         }
     }
@@ -127,7 +129,8 @@ where
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
 pub struct UniformDistanceMap<Cost, Directions> {
     pub(crate) distance_map: DistanceMap<Cost>,
     pub(crate) directions: Directions,
